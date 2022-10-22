@@ -24,9 +24,7 @@
 #include "GSUtil.h"
 #include "xbyak/xbyak_util.h"
 
-#ifdef _WIN32
-#include "GSDeviceDX.h"
-#include <VersionHelpers.h>
+#ifdef _WINDOWS
 #include "svnrev.h"
 #else
 #define SVN_REV 0
@@ -41,9 +39,9 @@ const char* GSUtil::GetLibName()
 
 	if(str.empty())
 	{
-		str = "GSdx";
+		str = "GSdx-Cutie";
 
-		#ifdef _WIN32
+		#ifdef _WINDOWS
 		str += format(" %lld", SVN_REV);
 		if(SVN_MODS) str += "m";
 		#endif
@@ -226,7 +224,7 @@ bool GSUtil::CheckSSE()
 	return true;
 }
 
-#define OCL_PROGRAM_VERSION 3
+#define OCL_PROGRAM_VERSION 1
 
 #ifdef ENABLE_OPENCL
 void GSUtil::GetDeviceDescs(list<OCLDeviceDesc>& dl)
@@ -322,26 +320,47 @@ string GSUtil::GetDeviceUniqueName(cl::Device& device)
 }
 #endif
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 bool GSUtil::CheckDirectX()
 {
-	if (GSDeviceDX::LoadD3DCompiler())
+	OSVERSIONINFOEX version;
+	memset(&version, 0, sizeof(version));
+	version.dwOSVersionInfoSize = sizeof(version);
+
+	if(GetVersionEx((OSVERSIONINFO*)&version))
 	{
-		GSDeviceDX::FreeD3DCompiler();
-		return true;
+		printf("Windows %d.%d.%d", version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber);
+
+		if(version.wServicePackMajor > 0)
+		{
+			printf(" (%s %d.%d)", version.szCSDVersion, version.wServicePackMajor, version.wServicePackMinor);
+		}
+
+		printf("\n");
 	}
 
-	// User's system is likely broken if it fails and is Windows 8.1 or greater.
-	if (!IsWindows8Point1OrGreater())
+	string d3dx9_dll = format("d3dx9_%d.dll", D3DX_SDK_VERSION);
+
+	if(HINSTANCE hDll = LoadLibrary(d3dx9_dll.c_str()))
 	{
-		printf("Cannot find d3dcompiler_43.dll\n");
-		if (MessageBox(nullptr, TEXT("You need to update some DirectX libraries, would you like to do it now?"), TEXT("GSdx"), MB_YESNO) == IDYES)
-		{
-			ShellExecute(nullptr, TEXT("open"), TEXT("https://www.microsoft.com/en-us/download/details.aspx?id=8109"), nullptr, nullptr, SW_SHOWNORMAL);
-		}
+		FreeLibrary(hDll);
 	}
-	return false;
+	else
+	{
+		printf("Cannot find %s\n", d3dx9_dll.c_str());
+
+		if(MessageBox(NULL, "You need to update some directx libraries, would you like to do it now?", "GSdx", MB_YESNO) == IDYES)
+		{
+			const char* url = "http://www.microsoft.com/downloads/details.aspx?FamilyId=2DA43D38-DB71-4C1B-BC6A-9B6652CD92A3";
+
+			ShellExecute(NULL, "open", url, NULL, NULL, SW_SHOWNORMAL);
+		}
+
+		return false;
+	}
+
+	return true;
 }
 
 // ---------------------------------------------------------------------------------
@@ -394,14 +413,6 @@ D3D_FEATURE_LEVEL GSUtil::CheckDirect3D11Level(IDXGIAdapter *adapter, D3D_DRIVER
 	hr = D3D11CreateDevice(adapter, type, NULL, 0, NULL, 0, D3D11_SDK_VERSION, NULL, &level, NULL);
 
 	return SUCCEEDED(hr) ? level : (D3D_FEATURE_LEVEL)0;
-}
-
-#else
-
-void GSmkdir(const char* dir)
-{
-	if (mkdir(dir, 0777))
-		fprintf(stderr, "Failed to create directory: %s\n", dir);
 }
 
 #endif

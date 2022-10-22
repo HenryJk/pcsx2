@@ -20,11 +20,63 @@
  */
 
 #include "stdafx.h"
+#ifdef ENABLE_BOOST
 #include "GSThread_CXX11.h"
+#else
+#include "GSThread.h"
+#endif
+
+#ifdef _WINDOWS
+
+#ifndef ENABLE_BOOST
+InitializeConditionVariablePtr pInitializeConditionVariable;
+WakeConditionVariablePtr pWakeConditionVariable;
+WakeAllConditionVariablePtr pWakeAllConditionVariable;
+SleepConditionVariableSRWPtr pSleepConditionVariableSRW;
+InitializeSRWLockPtr pInitializeSRWLock;
+AcquireSRWLockExclusivePtr pAcquireSRWLockExclusive;
+TryAcquireSRWLockExclusivePtr pTryAcquireSRWLockExclusive;
+ReleaseSRWLockExclusivePtr pReleaseSRWLockExclusive;
+AcquireSRWLockSharedPtr pAcquireSRWLockShared;
+TryAcquireSRWLockSharedPtr pTryAcquireSRWLockShared;
+ReleaseSRWLockSharedPtr pReleaseSRWLockShared;
+
+class InitCondVar
+{
+	HMODULE m_kernel32;
+
+public:
+	InitCondVar()
+	{
+		m_kernel32 = LoadLibrary("kernel32.dll"); // should not call LoadLibrary from DllMain, but kernel32.dll is the only one guaranteed to be loaded already
+
+		pInitializeConditionVariable = (InitializeConditionVariablePtr)GetProcAddress(m_kernel32, "InitializeConditionVariable");
+		pWakeConditionVariable = (WakeConditionVariablePtr)GetProcAddress(m_kernel32, "WakeConditionVariable");
+		pWakeAllConditionVariable = (WakeAllConditionVariablePtr)GetProcAddress(m_kernel32, "WakeAllConditionVariable");
+		pSleepConditionVariableSRW = (SleepConditionVariableSRWPtr)GetProcAddress(m_kernel32, "SleepConditionVariableSRW");
+		pInitializeSRWLock = (InitializeSRWLockPtr)GetProcAddress(m_kernel32, "InitializeSRWLock");
+		pAcquireSRWLockExclusive = (AcquireSRWLockExclusivePtr)GetProcAddress(m_kernel32, "AcquireSRWLockExclusive");
+		pTryAcquireSRWLockExclusive = (TryAcquireSRWLockExclusivePtr)GetProcAddress(m_kernel32, "TryAcquireSRWLockExclusive");
+		pReleaseSRWLockExclusive = (ReleaseSRWLockExclusivePtr)GetProcAddress(m_kernel32, "ReleaseSRWLockExclusive");
+		pAcquireSRWLockShared = (AcquireSRWLockSharedPtr)GetProcAddress(m_kernel32, "AcquireSRWLockShared");
+		pTryAcquireSRWLockShared = (TryAcquireSRWLockSharedPtr)GetProcAddress(m_kernel32, "TryAcquireSRWLockShared");
+		pReleaseSRWLockShared = (ReleaseSRWLockSharedPtr)GetProcAddress(m_kernel32, "ReleaseSRWLockShared");
+	}
+	
+	virtual ~InitCondVar()
+	{
+		FreeLibrary(m_kernel32);
+	}
+};
+
+static InitCondVar s_icv;
+#endif
+
+#endif
 
 GSThread::GSThread()
 {
-    #ifdef _WIN32
+    #ifdef _WINDOWS
 
 	m_ThreadId = 0;
 	m_hThread = NULL;
@@ -39,7 +91,7 @@ GSThread::~GSThread()
 	CloseThread();
 }
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 DWORD WINAPI GSThread::StaticThreadProc(void* lpParam)
 {
@@ -63,7 +115,7 @@ void* GSThread::StaticThreadProc(void* param)
 
 void GSThread::CreateThread()
 {
-    #ifdef _WIN32
+    #ifdef _WINDOWS
 
 	m_hThread = ::CreateThread(NULL, 0, StaticThreadProc, (void*)this, 0, &m_ThreadId);
 
@@ -81,7 +133,7 @@ void GSThread::CreateThread()
 
 void GSThread::CloseThread()
 {
-    #ifdef _WIN32
+    #ifdef _WINDOWS
 
 	if(m_hThread != NULL)
 	{

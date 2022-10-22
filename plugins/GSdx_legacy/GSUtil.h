@@ -55,7 +55,7 @@ public:
 	static string GetDeviceUniqueName(cl::Device& device);
 #endif
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 	static bool CheckDirectX();
 	static bool CheckDXGI();
@@ -65,6 +65,3 @@ public:
 #endif
 };
 
-#ifdef __linux__
-void GSmkdir(const char* dir);
-#endif

@@ -27,44 +27,33 @@
 #include "GSTextureCacheOGL.h"
 #include "GSVertexHW.h"
 
-class GSRendererOGL final : public GSRendererHW
+class GSRendererOGL : public GSRendererHW
 {
-	enum PRIM_OVERLAP {
-		PRIM_OVERLAP_UNKNOW,
-		PRIM_OVERLAP_YES,
-		PRIM_OVERLAP_NO
-	};
-
-	enum ACC_BLEND {
-		ACC_BLEND_NONE = 0,
-		ACC_BLEND_FREE = 1,
-		ACC_BLEND_SPRITE = 2,
-		ACC_BLEND_CCLIP_DALPHA = 3,
-		ACC_BLEND_FULL = 4,
-		ACC_BLEND_ULTRA = 5
-	};
-
 	private:
+		GSVector2 m_pixelcenter;
+		int m_SkipIso;
+		int m_SkipIso_primclass;
+		int m_SkipIso_FBMSK;
+		int m_SkipIso_PSM;
+		int m_NoAlphaTest;
+		bool m_accurate_blend;
 		bool m_accurate_date;
-		int m_sw_blending;
-		PRIM_OVERLAP m_prim_overlap;
-		bool m_unsafe_fbmask;
-		vector<size_t> m_drawlist;
-
+		bool m_accurate_colclip;
+		
+		bool UserHacks_AlphaHack;
+		bool UserHacks_AlphaStencil;
+		bool UserHacks_DateGL4;
+		bool UserHacks_SkipPostProcessing;
+		bool UserHacks_SkipIso_primclass;
+		bool UserHacks_SkipIso_FBMSK;
+		bool UserHacks_SkipIso_PSM;
+		bool UserHacks_PSMhotkey;
 		unsigned int UserHacks_TCOffset;
 		float UserHacks_TCO_x, UserHacks_TCO_y;
-		bool UserHacks_safe_fbmask;
 
-		GSDeviceOGL::VSConstantBuffer vs_cb;
-		GSDeviceOGL::PSConstantBuffer ps_cb;
-
-		GSVector4i ComputeBoundingBox(const GSVector2& rtscale, const GSVector2i& rtsize);
-
-	private:
+	protected:
 		void EmulateGS();
 		void SetupIA();
-		bool EmulateTextureShuffleAndFbmask(GSDeviceOGL::PSSelector& ps_sel, GSDeviceOGL::OMColorMaskSelector& om_csel);
-		bool EmulateBlending(GSDeviceOGL::PSSelector& ps_sel, bool DATE_GL42);
 
 	public:
 		GSRendererOGL();
@@ -72,9 +61,9 @@ class GSRendererOGL final : public GSRendererHW
 
 		bool CreateDevice(GSDevice* dev);
 
-		void DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Source* tex) final;
+		void DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Source* tex);
 
-		PRIM_OVERLAP PrimitiveOverlap();
+		bool PrimitiveOverlap();
 
 		void SendDraw(bool require_barrier);
 };

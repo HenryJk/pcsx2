@@ -1,37 +1,5 @@
 //#version 420 // Keep it for text editor detection
 
-layout(std140, binding = 20) uniform cb20
-{
-    vec2 VertexScale;
-    vec2 VertexOffset;
-    vec2 _removed_TextureScale;
-    vec2 PointSize;
-};
-
-// Warning duplicated in both GLSL file
-layout(std140, binding = 21) uniform cb21
-{
-    vec3 FogColor;
-    float AREF;
-
-    vec4 WH;
-
-    vec2 TA;
-    float _pad0;
-    float Af;
-
-    uvec4 MskFix;
-
-    uvec4 FbMask;
-
-    vec4 HalfTexel;
-
-    vec4 MinMax;
-
-    vec2 TextureScale;
-    vec2 TC_OffsetHack;
-};
-
 #ifdef VERTEX_SHADER
 layout(location = 0) in vec2  i_st;
 layout(location = 2) in vec4  i_c;
@@ -43,12 +11,12 @@ layout(location = 7) in vec4  i_f;
 
 out SHADER
 {
-    vec4 t_float;
-    vec4 t_int;
+    vec4 t;
     vec4 c;
-    flat vec4 fc;
+	flat vec4 fc;
 } VSout;
 
+#define VSout_t (VSout.t)
 #define VSout_c (VSout.c)
 #define VSout_fc (VSout.fc)
 
@@ -56,8 +24,15 @@ out gl_PerVertex {
     vec4 gl_Position;
     float gl_PointSize;
 #if !pGL_ES
-    float gl_ClipDistance[1];
+    float gl_ClipDistance[];
 #endif
+};
+
+layout(std140, binding = 20) uniform cb20
+{
+    vec2 VertexScale;
+    vec2 VertexOffset;
+    vec2 TextureScale;
 };
 
 #ifdef ZERO_TO_ONE_DEPTH
@@ -66,19 +41,63 @@ const float exp_min32 = exp2(-32.0f);
 const float exp_min31 = exp2(-31.0f);
 #endif
 
+#ifdef SUBROUTINE_GL40
+// Function pointer type
+subroutine void TextureCoordType(void);
+
+// a function pointer variable
+layout(location = 0) subroutine uniform TextureCoordType texture_coord;
+
+layout(index = 0) subroutine(TextureCoordType)
+void tme_0()
+{
+    VSout_t.xy = vec2(0.0f, 0.0f);
+    VSout_t.w = 1.0f;
+}
+
+layout(index = 1) subroutine(TextureCoordType)
+void tme_1_fst_0()
+{
+    VSout_t.xy = i_st;
+    VSout_t.w = i_q;
+}
+
+layout(index = 2) subroutine(TextureCoordType)
+void tme_1_fst_1()
+{
+    VSout_t.xy = vec2(i_uv) * TextureScale;
+    VSout_t.w = 1.0f;
+}
+
+#else
+
 void texture_coord()
 {
-    vec2 uv = (VS_WILDHACK == 1) ? vec2(i_uv &  uvec2(0x3FEF, 0x3FEF)) : vec2(i_uv);
-
-    // Float coordinate
-    VSout.t_float.xy = i_st;
-    VSout.t_float.w  = i_q;
-
-    // Integer coordinate => normalized
-    VSout.t_int.xy = uv * TextureScale;
-    // Integer coordinate => integral
-    VSout.t_int.zw = uv;
+    if(VS_TME != 0)
+    {
+        if(VS_FST != 0)
+        {
+            if (VS_WILDHACK == 1) {
+                VSout_t.xy = vec2(i_uv &  uvec2(0x3FEF, 0x3FEF)) * TextureScale;
+            } else {
+                VSout_t.xy = vec2(i_uv) * TextureScale;
+            }
+            VSout_t.w = 1.0f;
+        }
+        else
+        {
+            VSout_t.xy = i_st;
+            VSout_t.w = i_q;
+        }
+    }
+    else
+    {
+        VSout_t.xy = vec2(0.0f, 0.0f);
+        VSout_t.w = 1.0f;
+    }
 }
+
+#endif
 
 void vs_main()
 {
@@ -118,8 +137,8 @@ void vs_main()
     texture_coord();
 
     VSout_c = i_c;
-    VSout_fc = i_c;
-    VSout.t_float.z = i_f.x; // pack for with texture
+	VSout_fc = i_c;
+    VSout_t.z = i_f.x;
 }
 
 #endif
@@ -130,7 +149,7 @@ in gl_PerVertex {
     vec4 gl_Position;
     float gl_PointSize;
 #if !pGL_ES
-    float gl_ClipDistance[1];
+    float gl_ClipDistance[];
 #endif
 } gl_in[];
 //in int gl_PrimitiveIDIn;
@@ -139,23 +158,21 @@ out gl_PerVertex {
     vec4 gl_Position;
     float gl_PointSize;
 #if !pGL_ES
-    float gl_ClipDistance[1];
+    float gl_ClipDistance[];
 #endif
 };
 //out int gl_PrimitiveID;
 
 in SHADER
 {
-    vec4 t_float;
-    vec4 t_int;
+    vec4 t;
     vec4 c;
     flat vec4 fc;
 } GSin[];
 
 out SHADER
 {
-    vec4 t_float;
-    vec4 t_int;
+    vec4 t;
     vec4 c;
     flat vec4 fc;
 } GSout;
@@ -168,74 +185,60 @@ layout(std140, binding = 22) uniform cb22
 
 struct vertex
 {
-    vec4 t_float;
-    vec4 t_int;
+    vec4 t;
     vec4 c;
+    vec2 a;
 };
 
 void out_vertex(in vertex v)
 {
-    GSout.t_float  = v.t_float;
-    GSout.t_int    = v.t_int;
-    GSout.c        = v.c;
-    // Flat output
-#if GS_POINT == 1
-    GSout.fc       = GSin[0].fc;
-#else
-    GSout.fc       = GSin[1].fc;
-#endif
+    GSout.t = v.t;
+    GSout.c = v.c;
     gl_PrimitiveID = gl_PrimitiveIDIn;
     EmitVertex();
 }
 
-#if GS_POINT == 1
-layout(points) in;
-#else
+void out_flat(in vec2 dp)
+{
+    // Flat output
+    GSout.fc = GSin[1].fc;
+}
+
 layout(lines) in;
-#endif
 layout(triangle_strip, max_vertices = 6) out;
 
 void gs_main()
 {
+    // Rescale from -1 1 to 0:1 (require window size)
+    vec2 dp = vec2(0.0f, 0.0f);
+
     // left top     => GSin[0];
     // right bottom => GSin[1];
-#if GS_POINT == 1
-    vertex rb = vertex(GSin[0].t_float, GSin[0].t_int, GSin[0].c);
-#else
-    vertex rb = vertex(GSin[1].t_float, GSin[1].t_int, GSin[1].c);
-#endif
-    vertex lt = vertex(GSin[0].t_float, GSin[0].t_int, GSin[0].c);
+    vertex rb = vertex(GSin[1].t, GSin[1].c, dp);
+    vertex lt = vertex(GSin[0].t, GSin[0].c, vec2(0.0f, 0.0f));
 
-#if GS_POINT == 1
-    vec4 rb_p = gl_in[0].gl_Position + vec4(PointSize.x, PointSize.y, 0.0f, 0.0f);
-#else
     vec4 rb_p = gl_in[1].gl_Position;
-#endif
-    vec4 lb_p = rb_p;
-    vec4 rt_p = rb_p;
+    vec4 lb_p = gl_in[1].gl_Position;
+    vec4 rt_p = gl_in[1].gl_Position;
     vec4 lt_p = gl_in[0].gl_Position;
 
-#if GS_POINT == 0
     // flat depth
     lt_p.z = rb_p.z;
     // flat fog and texture perspective
-    lt.t_float.zw = rb.t_float.zw;
+    lt.t.zw = rb.t.zw;
     // flat color
     lt.c = rb.c;
-#endif
 
-    // Swap texture and position coordinate
-    vertex lb    = rb;
-    lb.t_float.x = lt.t_float.x;
-    lb.t_int.x   = lt.t_int.x;
-    lb.t_int.z   = lt.t_int.z;
-    lb_p.x       = lt_p.x;
+	// Swap texture and position coordinate
+    vertex lb = rb;
+    lb_p.x = lt_p.x;
+    lb.t.x = lt.t.x;
+    lb.a.x = lt.a.x;
 
-    vertex rt    = rb;
-    rt_p.y       = lt_p.y;
-    rt.t_float.y = lt.t_float.y;
-    rt.t_int.y   = lt.t_int.y;
-    rt.t_int.w   = lt.t_int.w;
+    vertex rt = rb;
+    rt_p.y = lt_p.y;
+    rt.t.y = lt.t.y;
+    rt.a.y = lt.a.y;
 
     // Triangle 1
     gl_Position = lt_p;
@@ -245,6 +248,7 @@ void gs_main()
     out_vertex(lb);
 
     gl_Position = rt_p;
+    out_flat(dp);
     out_vertex(rt);
     EndPrimitive();
 
@@ -256,6 +260,7 @@ void gs_main()
     out_vertex(rt);
 
     gl_Position = rb_p;
+    out_flat(dp);
     out_vertex(rb);
     EndPrimitive();
 }

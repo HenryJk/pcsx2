@@ -28,7 +28,6 @@ class GSDialog
 	int m_id;
 
 	static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	static UINT GetTooltipStructSize();
 
 protected:
 	HWND m_hWnd;
@@ -51,14 +50,8 @@ public:
 	void SetText(UINT id, const char* str);
 	void SetTextAsInt(UINT id, int i);
 
-	void ComboBoxInit(UINT id, const vector<GSSetting>& settings, int32_t selectionValue, int32_t maxValue = INT32_MAX);
+	void ComboBoxInit(UINT id, const vector<GSSetting>& settings, uint32 selid, uint32 maxid = ~0);
 	int ComboBoxAppend(UINT id, const char* str, LPARAM data = 0, bool select = false);
 	bool ComboBoxGetSelData(UINT id, INT_PTR& data);
 	void ComboBoxFixDroppedWidth(UINT id);
-
-	void OpenFileDialog(UINT id, const char *title);
-
-	void AddTooltip(UINT id);
-
-	static void InitCommonControls();
 };

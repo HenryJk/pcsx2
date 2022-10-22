@@ -24,7 +24,7 @@
 #include "GSDialog.h"
 #include "GSSetting.h"
 
-class GSShaderDlg : public GSDialog
+class GSShadeBostDlg : public GSDialog
 {
 	int saturation;
 	int brightness;
@@ -37,7 +37,7 @@ protected:
 	bool OnMessage(UINT message, WPARAM wParam, LPARAM lParam);	
 
 public:
-	GSShaderDlg();
+	GSShadeBostDlg();
 };
 
 class GSHacksDlg : public GSDialog
@@ -47,6 +47,8 @@ class GSHacksDlg : public GSDialog
 	std::string adapter_id;
 	
 	bool isdx9;
+
+	HWND hovered_window;
 
 	void UpdateControls();
 
@@ -66,6 +68,7 @@ public:
 
 class GSSettingsDlg : public GSDialog
 {
+	list<D3DDISPLAYMODE> m_modes;
 
 	struct Adapter
 	{
@@ -75,9 +78,11 @@ class GSSettingsDlg : public GSDialog
 		Adapter(const std::string &n, const std::string &i, const D3D_FEATURE_LEVEL &l) : name(n), id(i), level(l) {}
 	};
 	
-	std::vector<Adapter> adapters;
+	std::vector<const Adapter> adapters;
 
 	vector<GSSetting> m_ocl_devs;
+
+	bool m_IsOpen2;
 	uint32 m_lastValidMsaa; // used to revert to previous dialog value if the user changed to invalid one, or lesser one and canceled
 
 	void UpdateRenderers();
@@ -88,9 +93,9 @@ protected:
 	bool OnCommand(HWND hWnd, UINT id, UINT code);
 
 	// Shade Boost
-	GSShaderDlg ShaderDlg;
+	GSShadeBostDlg ShadeBoostDlg;
 	GSHacksDlg HacksDlg;
 
 public:
-	GSSettingsDlg();
+	GSSettingsDlg(bool isOpen2);
 };

@@ -22,39 +22,11 @@
 #include "stdafx.h"
 #include "GSCapture.h"
 #include "GSPng.h"
-#include "GSUtil.h"
+#ifdef __linux__
+#include <sys/stat.h> // mkdir
+#endif
 
-#ifdef _WIN32
-
-class CPinInfo : public PIN_INFO {
-public:
-	CPinInfo() { pFilter = NULL; }
-	~CPinInfo() { if (pFilter) pFilter->Release(); }
-};
-
-class CFilterInfo : public FILTER_INFO {
-public:
-	CFilterInfo() { pGraph = NULL; }
-	~CFilterInfo() { if (pGraph) pGraph->Release(); }
-};
-
-#define BeginEnumFilters(pFilterGraph, pEnumFilters, pBaseFilter) \
-	{CComPtr<IEnumFilters> pEnumFilters; \
-	if(pFilterGraph && SUCCEEDED(pFilterGraph->EnumFilters(&pEnumFilters))) \
-	{ \
-		for(CComPtr<IBaseFilter> pBaseFilter; S_OK == pEnumFilters->Next(1, &pBaseFilter, 0); pBaseFilter = NULL) \
-		{ \
-
-#define EndEnumFilters }}}
-
-#define BeginEnumPins(pBaseFilter, pEnumPins, pPin) \
-	{CComPtr<IEnumPins> pEnumPins; \
-	if(pBaseFilter && SUCCEEDED(pBaseFilter->EnumPins(&pEnumPins))) \
-	{ \
-		for(CComPtr<IPin> pPin; S_OK == pEnumPins->Next(1, &pPin, 0); pPin = NULL) \
-		{ \
-
-#define EndEnumPins }}}
+#ifdef _WINDOWS
 
 //
 // GSSource
@@ -371,6 +343,15 @@ public:
 	}
 };
 
+#define BeginEnumPins(pBaseFilter, pEnumPins, pPin) \
+	{CComPtr<IEnumPins> pEnumPins; \
+	if(pBaseFilter && SUCCEEDED(pBaseFilter->EnumPins(&pEnumPins))) \
+	{ \
+		for(CComPtr<IPin> pPin; S_OK == pEnumPins->Next(1, &pPin, 0); pPin = NULL) \
+		{ \
+
+#define EndEnumPins }}}
+
 static IPin* GetFirstPin(IBaseFilter* pBF, PIN_DIRECTION dir)
 {
 	if(!pBF) return(NULL);
@@ -403,9 +384,6 @@ GSCapture::GSCapture()
 {
 	m_out_dir = theApp.GetConfig("capture_out_dir", "/tmp/GSdx_Capture");
 	m_threads = theApp.GetConfig("capture_threads", 4);
-#ifdef __linux__
-	m_compression_level = theApp.GetConfig("png_compression_level", Z_BEST_SPEED);
-#endif
 }
 
 GSCapture::~GSCapture()
@@ -413,16 +391,19 @@ GSCapture::~GSCapture()
 	EndCapture();
 }
 
-bool GSCapture::BeginCapture(float fps, GSVector2i recomendedResolution, float aspect)
+bool GSCapture::BeginCapture(float fps)
 {
-	printf("Recomended resolution: %d x %d, DAR for muxing: %.4f\n", recomendedResolution.x, recomendedResolution.y, aspect);
+#ifdef _CX11_
 	std::lock_guard<std::recursive_mutex> lock(m_lock);
+#else
+	GSAutoLock lock(&m_lock);
+#endif
 
 	ASSERT(fps != 0);
 
 	EndCapture();
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 	GSCaptureDlg dlg;
 
@@ -488,6 +469,11 @@ bool GSCapture::BeginCapture(float fps, GSVector2i recomendedResolution, float a
 			pPin->QueryPinInfo(&pi);
 			wstring s(pi.achName);
 			printf("- Pin [%p - %p]: %s (%s)\n", pPin.p, pPinTo.p, string(s.begin(), s.end()).c_str(), pi.dir ? "out" : "in");
+
+			BeginEnumMediaTypes(pPin, pEMT, pmt)
+			{
+			}
+			EndEnumMediaTypes(pmt)
 		}
 		EndEnumPins
 	}
@@ -499,7 +485,7 @@ bool GSCapture::BeginCapture(float fps, GSVector2i recomendedResolution, float a
 
 #elif __linux__
 	// Note I think it doesn't support multiple depth creation
-	GSmkdir(m_out_dir.c_str());
+	mkdir(m_out_dir.c_str(), 0777);
 
 	// Really cheap recording
 	m_frame = 0;
@@ -507,9 +493,12 @@ bool GSCapture::BeginCapture(float fps, GSVector2i recomendedResolution, float a
 	m_size.x = theApp.GetConfig("capture_resx", 1280);
 	m_size.y = theApp.GetConfig("capture_resy", 1024);
 
+#ifdef __linux__
 	for(int i = 0; i < m_threads; i++) {
 		m_workers.push_back(new GSPng::Worker());
 	}
+#endif
+
 #endif
 
 	m_capturing = true;
@@ -519,7 +508,11 @@ bool GSCapture::BeginCapture(float fps, GSVector2i recomendedResolution, float a
 
 bool GSCapture::DeliverFrame(const void* bits, int pitch, bool rgba)
 {
+#ifdef _CX11_
 	std::lock_guard<std::recursive_mutex> lock(m_lock);
+#else
+	GSAutoLock lock(&m_lock);
+#endif
 
 	if(bits == NULL || pitch == 0)
 	{
@@ -528,7 +521,7 @@ bool GSCapture::DeliverFrame(const void* bits, int pitch, bool rgba)
 		return false;
 	}
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 	if(m_src)
 	{
@@ -540,8 +533,8 @@ bool GSCapture::DeliverFrame(const void* bits, int pitch, bool rgba)
 #elif __linux__
 
 	std::string out_file = m_out_dir + format("/frame.%010d.png", m_frame);
-	//GSPng::Save(GSPng::RGB_PNG, out_file, (uint8*)bits, m_size.x, m_size.y, pitch, m_compression_level);
-	m_workers[m_frame%m_threads]->Push(shared_ptr<GSPng::Transaction>(new GSPng::Transaction(GSPng::RGB_PNG, out_file, static_cast<const uint8*>(bits), m_size.x, m_size.y, pitch, m_compression_level)));
+	//GSPng::Save(GSPng::RGB_PNG, out_file, (char*)bits, m_size.x, m_size.y, pitch);
+	m_workers[m_frame%m_threads]->Push(shared_ptr<GSPng::Transaction>(new GSPng::Transaction(GSPng::RGB_PNG, out_file, (char*)bits, m_size.x, m_size.y, pitch)));
 
 	m_frame++;
 
@@ -552,9 +545,13 @@ bool GSCapture::DeliverFrame(const void* bits, int pitch, bool rgba)
 
 bool GSCapture::EndCapture()
 {
+#ifdef _CX11_
 	std::lock_guard<std::recursive_mutex> lock(m_lock);
+#else
+	GSAutoLock lock(&m_lock);
+#endif
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 	if(m_src)
 	{

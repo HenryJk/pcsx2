@@ -22,22 +22,29 @@
 #pragma once
 
 #include "GSVector.h"
+#ifndef _CX11_
+#include "GSThread.h"
+#endif
 #include "GSPng.h"
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 #include "GSCaptureDlg.h"
 #endif
 
 class GSCapture
 {
+#ifdef _CX11_
 	std::recursive_mutex m_lock;
+#else
+	GSCritSec m_lock;
+#endif
 	bool m_capturing;
 	GSVector2i m_size;
 	uint64 m_frame;
 	std::string m_out_dir;
 	int m_threads;
 
-	#ifdef _WIN32
+	#ifdef _WINDOWS
 
 	CComPtr<IGraphBuilder> m_graph;
 	CComPtr<IBaseFilter> m_src;
@@ -45,7 +52,6 @@ class GSCapture
 	#elif __linux__
 
 	vector<GSPng::Worker*> m_workers;
-	int m_compression_level;
 
 	#endif
 
@@ -53,7 +59,7 @@ public:
 	GSCapture();
 	virtual ~GSCapture();
 
-	bool BeginCapture(float fps, GSVector2i recomendedResolution, float aspect);
+	bool BeginCapture(float fps);
 	bool DeliverFrame(const void* bits, int pitch, bool rgba);
 	bool EndCapture();
 

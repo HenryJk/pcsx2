@@ -1,5 +1,5 @@
 /*
- *	Copyright (C) 2007-2015 Gabest
+ *	Copyright (C) 2007-2009 Gabest
  *	http://www.gabest.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -25,16 +25,16 @@
 
 struct GSSetting
 {
-	int32_t value;
+	uint32 id;
 	std::string name;
 	std::string note;
 
-	template< typename T>
-	explicit GSSetting(T value, const char* name, const char* note) :
-		value(static_cast<int32_t>(value)),
-		name(name),
-		note(note)
+
+	GSSetting(uint32 id, const char* name, const char* note)
 	{
+		this->id = id;
+		this->name = name;
+		this->note = note;
 	}
 };
 
@@ -42,37 +42,46 @@ const char* dialog_message(int ID, bool* updateText = NULL);
 
 #ifdef __linux__
 enum {
-	IDC_FILTER,
 	IDC_SKIPDRAWHACK,
 	IDC_SKIPDRAWHACKEDIT,
+	IDC_STATIC_SKIPDRAW,
 	IDC_ALPHAHACK,
 	IDC_OFFSETHACK,
 	IDC_SPRITEHACK,
 	IDC_WILDHACK,
 	IDC_MSAACB,
+	IDC_STATIC_MSAA,
+	IDC_AGGRESSIVECRC,
 	IDC_ALPHASTENCIL,
+	IDC_CHECK_NVIDIA_HACK,
 	IDC_CHECK_DISABLE_ALL_HACKS,
 	IDC_ALIGN_SPRITE,
 	IDC_ROUND_SPRITE,
 	IDC_TCOFFSETX,
 	IDC_TCOFFSETX2,
+	IDC_STATIC_TCOFFSETX,
 	IDC_TCOFFSETY,
 	IDC_TCOFFSETY2,
+	IDC_STATIC_TCOFFSETY,
 	IDC_PALTEX,
-	IDC_ACCURATE_BLEND_UNIT,
-	IDC_SAFE_FBMASK,
-	IDC_ACCURATE_DATE,
-	IDC_TC_DEPTH,
-	IDC_CRC_LEVEL,
-	IDC_AFCOMBO,
-	IDC_AA1,
-	IDC_SWTHREADS,
-	IDC_SWTHREADS_EDIT,
-	IDC_SHADEBOOST,
-	IDC_SHADER_FX,
-	IDC_FXAA,
-	IDC_MIPMAP,
-	IDC_PRELOAD_GS,
-	IDC_FAST_TC_INV,
+	IDC_ACCURATE_BLEND,
+	IDC_ACCURATE_DATE
+	IDC_SKIPPOSTPROCESSING,
+	IDC_skiptexEDIT,
+	IDC_skiptex,
+	IDC_STATIC_TEXT_skiptex,
+	IDC_SKIPISO,
+	IDC_SKIPISO_PRIMCLASSEDIT,
+	IDC_SKIPISO_PRIMCLASS,
+	IDC_CHECK_SKIPISO_PRIMCLASS,
+	IDC_SKIPISO_FBMSKEDIT,
+	IDC_SKIPISO_FBMSK,
+	IDC_CHECK_SKIPISO_FBMSK,
+	IDC_SKIPISO_PSMEDIT,
+	IDC_SKIPISO_PSM,
+	IDC_CHECK_SKIPISO_PSM,
+	IDC_SKIPTEXHOTKEY,
+	IDC_PSMHOTKEY,
+	IDC_NOALPHATEST
 };
 #endif

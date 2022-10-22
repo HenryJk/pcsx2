@@ -45,10 +45,12 @@
 #endif
 //#define ENABLE_OGL_DEBUG_MEM_BW // compute the quantity of data transfered (debug purpose)
 
-#if defined(__linux__) && !(defined(_DEBUG) || defined(_DEVEL))
-#define DISABLE_PERF_MON // Burn cycle for nothing in release mode
+#ifdef _WINDOWS
+//#define ENABLE_OPENCL
 #endif
 
-#ifdef _WIN32
-//#define ENABLE_OPENCL
+#if defined(__linux__)
+// Allow to dump texture as PNG (require libpng++). It reduces the size of the dump
+// and alpha is well supported (on linux)
+#define ENABLE_OGL_PNG
 #endif

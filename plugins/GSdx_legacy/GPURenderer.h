@@ -24,7 +24,7 @@
 #include "GPUState.h"
 #include "GSVertexList.h"
 #include "GSDevice.h"
-#ifdef _WIN32
+#ifdef _WINDOWS
 #include "GSWndDX.h"
 #endif
 
@@ -39,6 +39,7 @@ protected:
 	int m_aspectratio;
 	bool m_vsync;
 	bool m_shaderfx;
+	bool m_customshader;
 	bool m_fxaa;
 	bool m_shadeboost;
 	GSVector2i m_scale;
@@ -46,7 +47,7 @@ protected:
 	virtual void ResetDevice() {}
 	virtual GSTexture* GetOutput() = 0;
 
-    #ifdef _WIN32
+    #ifdef _WINDOWS
 
 	HWND m_hWnd;
 	WNDPROC m_wndproc;
@@ -125,7 +126,7 @@ protected:
 
 		if(vertices == NULL)
 		{
-			printf("GSdx: failed to allocate %d bytes for verticles.\n", (int)sizeof(Vertex) * maxcount);
+			printf("GSdx: failed to allocate %d bytes for verticles.\n", sizeof(Vertex) * maxcount);
 			throw GSDXError();
 		}
 

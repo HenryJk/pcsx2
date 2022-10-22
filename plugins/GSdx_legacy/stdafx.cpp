@@ -59,7 +59,7 @@ string format(const char* fmt, ...)
 	return s;
 }
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 void* vmalloc(size_t size, bool code)
 {
@@ -103,7 +103,7 @@ void vmfree(void* ptr, size_t size)
 
 #endif
 
-#if !defined(_MSC_VER)
+#if !defined(_MSC_VER) && !defined(HAVE_ALIGNED_MALLOC)
 
 // declare linux equivalents (alignment must be power of 2 (1,2,4...2^15)
 
@@ -111,9 +111,18 @@ void vmfree(void* ptr, size_t size)
 
 void* _aligned_malloc(size_t size, size_t alignment)
 {
-	void *ret = 0;
-	posix_memalign(&ret, alignment, size);
-	return ret;
+	ASSERT(alignment <= 0x8000);
+	size_t r = (size_t)malloc(size + --alignment + 2);
+	size_t off = (r + 2 + alignment) & ~(size_t)alignment;
+	if(!r) return NULL;
+	((uint16*)off)[-1] = (uint16)(off-r);
+	return (void*)off;
+}
+
+void _aligned_free(void* p)
+{
+	if(!p) return;
+	free((void*)((size_t)p-((uint16*)p)[-1]));
 }
 
 #endif

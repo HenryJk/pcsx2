@@ -24,6 +24,22 @@
 #include "GSDialog.h"
 #include "GSSetting.h"
 
+class GPUShadeBostDlg : public GSDialog
+{
+	int saturation;
+	int brightness;
+	int contrast;
+
+	void UpdateControls();
+
+protected:
+	void OnInit();
+	bool OnMessage(UINT message, WPARAM wParam, LPARAM lParam);	
+
+public:
+	GPUShadeBostDlg();
+};
+
 class GPUSettingsDlg : public GSDialog
 {
 	list<D3DDISPLAYMODE> m_modes;
@@ -33,6 +49,8 @@ class GPUSettingsDlg : public GSDialog
 protected:
 	void OnInit();
 	bool OnCommand(HWND hWnd, UINT id, UINT code);
+	// Shade Boost
+	GPUShadeBostDlg ShadeBoostDlg;
 
 public:
 	GPUSettingsDlg();

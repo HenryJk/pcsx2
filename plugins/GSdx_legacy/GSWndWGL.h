@@ -21,7 +21,7 @@
 
 #include "GSWnd.h"
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 class GSWndWGL : public GSWndGL
 {
@@ -36,8 +36,6 @@ class GSWndWGL : public GSWndGL
 
 	void CloseWGLDisplay();
 	bool OpenWGLDisplay();
-
-	static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 public:
 	GSWndWGL();

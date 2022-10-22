@@ -30,8 +30,10 @@ GSTextureCacheOGL::GSTextureCacheOGL(GSRenderer* r)
 
 void GSTextureCacheOGL::Read(Target* t, const GSVector4i& r)
 {
-	if (!t->m_dirty.empty() || (r.width() == 0 && r.height() == 0))
+	if(!t->m_dirty.empty())
+	{
 		return;
+	}
 
 	const GIFRegTEX0& TEX0 = t->m_TEX0;
 
@@ -75,17 +77,18 @@ void GSTextureCacheOGL::Read(Target* t, const GSVector4i& r)
 	// Yes lots of logging, but I'm not confident with this code
 	GL_PUSH("Texture Cache Read. Format(0x%x)", TEX0.PSM);
 
-	GL_PERF("TC: Read Back Target: %d (0x%x)[fmt: 0x%x]. Size %dx%d",
-			t->m_texture->GetID(), TEX0.TBP0, TEX0.PSM, r.width(), r.height());
+	GL_CACHE("TC: Read Back Target: %d (0x%x)[fmt: 0x%x]",
+			t->m_texture->GetID(), TEX0.TBP0, TEX0.PSM);
+
+	GL_PERF("Read texture from GPU. Format(0x%x)", TEX0.PSM);
 
 	GSVector4 src = GSVector4(r) * GSVector4(t->m_texture->GetScale()).xyxy() / GSVector4(t->m_texture->GetSize()).xyxy();
 
 	if(GSTexture* offscreen = m_renderer->m_dev->CopyOffscreen(t->m_texture, src, r.width(), r.height(), fmt, ps_shader))
 	{
 		GSTexture::GSMap m;
-		GSVector4i r_offscreen(0, 0, r.width(), r.height());
 
-		if(offscreen->Map(m, &r_offscreen))
+		if(offscreen->Map(m))
 		{
 			// TODO: block level write
 
@@ -113,7 +116,6 @@ void GSTextureCacheOGL::Read(Target* t, const GSVector4i& r)
 				case PSM_PSMZ16:
 				case PSM_PSMZ16S:
 					m_renderer->m_mem.WritePixel16(m.bits, m.pitch, off, r);
-					break;
 
 				default:
 					ASSERT(0);

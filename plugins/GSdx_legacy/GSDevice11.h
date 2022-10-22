@@ -39,8 +39,10 @@ class GSDevice11 : public GSDeviceDX
 	void DoFXAA(GSTexture* sTex, GSTexture* dTex);
 	void DoShadeBoost(GSTexture* sTex, GSTexture* dTex);
 	void DoExternalFX(GSTexture* sTex, GSTexture* dTex);
+	void DoCustomShader(GSTexture* sTex, GSTexture* dTex);
 
 	void InitExternalFX();
+	void InitCustomShader();
 	void InitFXAA(); // Bug workaround! Stack corruption? Heap corruption? No idea
 	
 	//
@@ -54,7 +56,6 @@ class GSDevice11 : public GSDeviceDX
 	CComPtr<ID3D11Buffer> m_ib_old;
 
 	bool m_srv_changed, m_ss_changed;
-	int spritehack;
 
 	struct
 	{
@@ -88,6 +89,8 @@ public: // TODO
 
 	bool FXAA_Compiled;
 	bool ExShader_Compiled;
+	bool CustomShader_Compiled;
+	bool UserHacks_NVIDIAHack;
 
 	struct
 	{
@@ -118,6 +121,12 @@ public: // TODO
 		CComPtr<ID3D11PixelShader> ps;
 		CComPtr<ID3D11Buffer> cb;
 	} m_shaderfx;
+
+	struct
+	{
+		CComPtr<ID3D11PixelShader> ps;
+		CComPtr<ID3D11Buffer> cb;
+	} m_customshader;
 
 	struct 
 	{
@@ -203,7 +212,7 @@ public:
 	void VSSetShader(ID3D11VertexShader* vs, ID3D11Buffer* vs_cb);
 	void GSSetShader(ID3D11GeometryShader* gs);
 	void PSSetShaderResources(GSTexture* sr0, GSTexture* sr1);
-	void PSSetShaderResource(int i, GSTexture* sr);
+	void PSSetShaderResource(int i, GSTexture* sRect);
 	void PSSetShaderResourceView(int i, ID3D11ShaderResourceView* srv);
 	void PSSetShader(ID3D11PixelShader* ps, ID3D11Buffer* ps_cb);
 	void PSSetSamplerState(ID3D11SamplerState* ss0, ID3D11SamplerState* ss1, ID3D11SamplerState* ss2 = NULL);
@@ -227,10 +236,12 @@ public:
 	operator ID3D11Device*() {return m_dev;}
 	operator ID3D11DeviceContext*() {return m_ctx;}
 
-	void CompileShader(const char* source, size_t size, const char* fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11VertexShader** vs, D3D11_INPUT_ELEMENT_DESC* layout, int count, ID3D11InputLayout** il);
-	void CompileShader(const char* source, size_t size, const char* fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11GeometryShader** gs);
-	void CompileShader(const char* source, size_t size, const char* fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11GeometryShader** gs, D3D11_SO_DECLARATION_ENTRY* layout, int count);
-	void CompileShader(const char* source, size_t size, const char* fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11PixelShader** ps);
-	void CompileShader(const char* source, size_t size, const char* fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11ComputeShader** cs);
+	void CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11VertexShader** vs, D3D11_INPUT_ELEMENT_DESC* layout, int count, ID3D11InputLayout** il);
+	void CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11GeometryShader** gs);
+	void CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11GeometryShader** gs, D3D11_SO_DECLARATION_ENTRY* layout, int count);	
+	void CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11PixelShader** ps);
+	void CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11ComputeShader** cs);
+	void CompileShader(const char* fn, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11ComputeShader** cs);
+	void CompileShader(const char* fn, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11VertexShader** vs, D3D11_INPUT_ELEMENT_DESC* layout, int count, ID3D11InputLayout** il);
+	void CompileShader(const char* fn, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11PixelShader** ps);
 };
-

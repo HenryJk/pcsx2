@@ -41,16 +41,13 @@ GSRendererSW::GSRendererSW(int threads)
 
 	memset(m_texture, 0, sizeof(m_texture));
 
-	m_rl = GSRasterizerList::Create<GSDrawScanline>(threads, &m_perfmon);
+	bool spin_thread = !!theApp.GetConfig("spin_thread", 0);
+	m_rl = GSRasterizerList::Create<GSDrawScanline>(threads, &m_perfmon, spin_thread);
 
 	m_output = (uint8*)_aligned_malloc(1024 * 1024 * sizeof(uint32), 32);
 
-	for (uint32 i = 0; i < countof(m_fzb_pages); i++) {
-		m_fzb_pages[i] = 0;
-	}
-	for (uint32 i = 0; i < countof(m_tex_pages); i++) {
-		m_tex_pages[i] = 0;
-	}
+	memset(m_fzb_pages, 0, sizeof(m_fzb_pages));
+	memset(m_tex_pages, 0, sizeof(m_tex_pages));
 
 	#define InitCVB(P) \
 		m_cvb[P][0][0] = &GSRendererSW::ConvertVertexBuffer<P, 0, 0>; \
@@ -95,12 +92,12 @@ void GSRendererSW::VSync(int field)
 	{
 		fprintf(s_fp, "%lld\n", m_perfmon.GetFrame());
 
-		GSVector4i dr = GetDisplayRect();
+		GSVector4i dRect = GetDisplayRect();
 		GSVector4i fr = GetFrameRect();
 		GSVector2i ds = GetDeviceSize();
 
-		fprintf(s_fp, "dr %d %d %d %d, fr %d %d %d %d, ds %d %d\n",
-			dr.x, dr.y, dr.z, dr.w,
+		fprintf(s_fp, "dRect %d %d %d %d, fr %d %d %d %d, ds %d %d\n",
+			dRect.x, dRect.y, dRect.z, dRect.w,
 			fr.x, fr.y, fr.z, fr.w,
 			ds.x, ds.y);
 
@@ -256,7 +253,7 @@ GSTexture* GSRendererSW::GetOutput(int i)
 
 		if(s_dump)
 		{
-			if(s_savef && s_n >= s_saven)
+			if(s_save && s_n >= s_saven)
 			{
 				m_texture[i]->Save(root_sw + format("%05d_f%lld_fr%d_%05x_%d.bmp", s_n, m_perfmon.GetFrame(), i, (int)DISPFB.Block(), (int)DISPFB.PSM));
 			}
@@ -450,11 +447,7 @@ void GSRendererSW::Draw()
 	sd->bbox = bbox;
 	sd->frame = m_perfmon.GetFrame();
 
-	if(!GetScanlineGlobalData(sd))
-	{
-		s_n += 3; // Keep it sync with HW renderer
-		return;
-	}
+	if(!GetScanlineGlobalData(sd)) return;
 
 	if(0) if(LOG)
 	{
@@ -520,30 +513,13 @@ void GSRendererSW::Draw()
 		Sync(2);
 
 		uint64 frame = m_perfmon.GetFrame();
-		// Dump the texture in 32 bits format. It helps to debug texture shuffle effect
-		// It will breaks the few games that really uses 16 bits RT
-		bool texture_shuffle = ((context->FRAME.PSM & 0x2) && ((context->TEX0.PSM & 3) == 2) && (m_vt.m_primclass == GS_SPRITE_CLASS));
 
 		string s;
 
-		if(s_n >= s_saven)
-		{
-			// Dump Register state
-			s = format("%05d_context.txt", s_n);
-
-			m_env.Dump(root_sw+s);
-			m_context->Dump(root_sw+s);
-		}
-
 		if(s_savet && s_n >= s_saven && PRIM->TME)
 		{
-			if (texture_shuffle) {
-				// Dump the RT in 32 bits format. It helps to debug texture shuffle effect
-				s = format("%05d_f%lld_tex_%05x_32bits.bmp", s_n, frame, (int)m_context->TEX0.TBP0);
-				m_mem.SaveBMP(root_sw+s, m_context->TEX0.TBP0, m_context->TEX0.TBW, 0, 1 << m_context->TEX0.TW, 1 << m_context->TEX0.TH);
-			}
-
 			s = format("%05d_f%lld_tex_%05x_%d.bmp", s_n, frame, (int)m_context->TEX0.TBP0, (int)m_context->TEX0.PSM);
+
 			m_mem.SaveBMP(root_sw+s, m_context->TEX0.TBP0, m_context->TEX0.TBW, m_context->TEX0.PSM, 1 << m_context->TEX0.TW, 1 << m_context->TEX0.TH);
 		}
 
@@ -551,14 +527,8 @@ void GSRendererSW::Draw()
 
 		if(s_save && s_n >= s_saven)
 		{
-
-			if (texture_shuffle) {
-				// Dump the RT in 32 bits format. It helps to debug texture shuffle effect
-				s = format("%05d_f%lld_rt0_%05x_32bits.bmp", s_n, frame, m_context->FRAME.Block());
-				m_mem.SaveBMP(root_sw+s, m_context->FRAME.Block(), m_context->FRAME.FBW, 0, GetFrameRect().width(), 512);
-			}
-
 			s = format("%05d_f%lld_rt0_%05x_%d.bmp", s_n, frame, m_context->FRAME.Block(), m_context->FRAME.PSM);
+
 			m_mem.SaveBMP(root_sw+s, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameRect().width(), 512);
 		}
 
@@ -571,19 +541,22 @@ void GSRendererSW::Draw()
 
 		s_n++;
 
+		if (s_n >= s_saven) {
+			// Dump Register state
+			s = format("%05d_context.txt", s_n);
+
+			m_env.Dump(root_sw+s);
+			m_context->Dump(root_sw+s);
+		}
+
 		Queue(data);
 
 		Sync(3);
 
 		if(s_save && s_n >= s_saven)
 		{
-			if (texture_shuffle) {
-				// Dump the RT in 32 bits format. It helps to debug texture shuffle effect
-				s = format("%05d_f%lld_rt1_%05x_32bits.bmp", s_n, frame, m_context->FRAME.Block());
-				m_mem.SaveBMP(root_sw+s, m_context->FRAME.Block(), m_context->FRAME.FBW, 0, GetFrameRect().width(), 512);
-			}
-
 			s = format("%05d_f%lld_rt1_%05x_%d.bmp", s_n, frame, m_context->FRAME.Block(), m_context->FRAME.PSM);
+
 			m_mem.SaveBMP(root_sw+s, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameRect().width(), 512);
 		}
 
@@ -596,8 +569,7 @@ void GSRendererSW::Draw()
 
 		s_n++;
 
-		if(s_savel > 0 && (s_n - s_saven) > s_savel)
-		{
+		if ((s_n - s_saven) > s_savel) {
 			s_dump = 0;
 		}
 	}
@@ -753,44 +725,60 @@ void GSRendererSW::InvalidateLocalMem(const GIFRegBITBLTBUF& BITBLTBUF, const GS
 	}
 }
 
-void GSRendererSW::UsePages(const uint32* pages, const int type)
+__forceinline void Increment16(volatile short* lpAddend)
 {
-	for(const uint32* p = pages; *p != GSOffset::EOP; p++) {
-		switch (type) {
-			case 0:
-				ASSERT((m_fzb_pages[*p] & 0xFFFF) < USHRT_MAX);
-				m_fzb_pages[*p] += 1;
-				break;
-			case 1:
-				ASSERT((m_fzb_pages[*p] >> 16) < USHRT_MAX);
-				m_fzb_pages[*p] += 0x10000;
-				break;
-			case 2:
-				ASSERT(m_tex_pages[*p] < USHRT_MAX);
-				m_tex_pages[*p] += 1;
-				break;
-			default:break;
+	// (*lpAddend)++;
+
+	_InterlockedIncrement16(lpAddend);
+}
+
+__forceinline void Decrement16(volatile short* lpAddend)
+{
+	// (*lpAddend)--;
+
+	_InterlockedDecrement16(lpAddend);
+}
+	
+void GSRendererSW::UsePages(const uint32* pages, int type)
+{
+	if(type < 2)
+	{
+		for(const uint32* p = pages; *p != GSOffset::EOP; p++)
+		{
+			ASSERT(((short*)&m_fzb_pages[*p])[type] < SHRT_MAX);
+
+			Increment16((short*)&m_fzb_pages[*p] + type);
+		}
+	}
+	else
+	{
+		for(const uint32* p = pages; *p != GSOffset::EOP; p++)
+		{
+			ASSERT(m_tex_pages[*p] < SHRT_MAX);
+
+			Increment16((short*)&m_tex_pages[*p]);
 		}
 	}
 }
 
-void GSRendererSW::ReleasePages(const uint32* pages, const int type)
+void GSRendererSW::ReleasePages(const uint32* pages, int type)
 {
-	for(const uint32* p = pages; *p != GSOffset::EOP; p++) {
-		switch (type) {
-			case 0:
-				ASSERT((m_fzb_pages[*p] & 0xFFFF) > 0);
-				m_fzb_pages[*p] -= 1;
-				break;
-			case 1:
-				ASSERT((m_fzb_pages[*p] >> 16) > 0);
-				m_fzb_pages[*p] -= 0x10000;
-				break;
-			case 2:
-				ASSERT(m_tex_pages[*p] > 0);
-				m_tex_pages[*p] -= 1;
-				break;
-			default:break;
+	if(type < 2)
+	{
+		for(const uint32* p = pages; *p != GSOffset::EOP; p++)
+		{
+			ASSERT(((short*)&m_fzb_pages[*p])[type] > 0);
+
+			Decrement16((short*)&m_fzb_pages[*p] + type);
+		}
+	}
+	else
+	{
+		for(const uint32* p = pages; *p != GSOffset::EOP; p++)
+		{
+			ASSERT(m_tex_pages[*p] > 0);
+
+			Decrement16((short*)&m_tex_pages[*p]);
 		}
 	}
 }
@@ -1101,23 +1089,19 @@ bool GSRendererSW::GetScanlineGlobalData(SharedData* data)
 				gd.sel.tfx = TFX_DECAL;
 			}
 
-			bool mipmap = IsMipMapActive();
+			GSTextureCacheSW::Texture* t = m_tc->Lookup(context->TEX0, env.TEXA);
 
-			GIFRegTEX0 TEX0 = m_context->GetSizeFixedTEX0(m_vt.m_min.t.xyxy(m_vt.m_max.t), m_vt.IsLinear(), mipmap);
+			if(t == NULL) {ASSERT(0); return false;}
 
 			GSVector4i r;
 
-			GetTextureMinMax(r, TEX0, context->CLAMP, gd.sel.ltf);
-
-			GSTextureCacheSW::Texture* t = m_tc->Lookup(TEX0, env.TEXA);
-
-			if(t == NULL) {ASSERT(0); return false;}
+			GetTextureMinMax(r, context->TEX0, context->CLAMP, gd.sel.ltf);
 
 			data->SetSource(t, r, 0);
 
 			gd.sel.tw = t->m_tw - 3;
 
-			if(mipmap)
+			if(m_mipmap && context->TEX1.MXL > 0 && context->TEX1.MMIN >= 2 && context->TEX1.MMIN <= 5 && m_vt.m_lod.y > 0)
 			{
 				// TEX1.MMIN
 				// 000 p
@@ -1184,7 +1168,7 @@ bool GSRendererSW::GetScanlineGlobalData(SharedData* data)
 					gd.k = GSVector4((float)k);
 				}
 
-				GIFRegTEX0 MIP_TEX0 = TEX0;
+				GIFRegTEX0 MIP_TEX0 = context->TEX0;
 				GIFRegCLAMP MIP_CLAMP = context->CLAMP;
 
 				GSVector4 tmin = m_vt.m_min.t;
@@ -1313,8 +1297,8 @@ bool GSRendererSW::GetScanlineGlobalData(SharedData* data)
 				}
 			}
 
-			uint16 tw = 1u << TEX0.TW;
-			uint16 th = 1u << TEX0.TH;
+			uint16 tw = 1u << context->TEX0.TW;
+			uint16 th = 1u << context->TEX0.TH;
 
 			switch(context->CLAMP.WMS)
 			{
@@ -1436,7 +1420,7 @@ bool GSRendererSW::GetScanlineGlobalData(SharedData* data)
 	{
 		gd.sel.zpsm = GSLocalMemory::m_psm[context->ZBUF.PSM].fmt;
 		gd.sel.ztst = ztest ? context->TEST.ZTST : ZTST_ALWAYS;
-		gd.sel.zoverflow = (uint32)GSVector4i(m_vt.m_max.p).z == 0x80000000U;
+		gd.sel.zoverflow = GSVector4i(m_vt.m_max.p).z == 0x80000000;
 	}
 
 	#if _M_SSE >= 0x501
@@ -1521,8 +1505,6 @@ GSRendererSW::SharedData::SharedData(GSRendererSW* parent)
 	: m_parent(parent)
 	, m_fb_pages(NULL)
 	, m_zb_pages(NULL)
-	, m_fpsm(0)
-	, m_zpsm(0)
 	, m_using_pages(false)
 	, m_syncpoint(SyncNone)
 {
@@ -1559,12 +1541,12 @@ void GSRendererSW::SharedData::UsePages(const uint32* fb_pages, int fpsm, const 
 	{
 		//TransactionScope scope(s_lock);
 
-		if(global.sel.fb && fb_pages != NULL)
+		if(global.sel.fb)
 		{
 			m_parent->UsePages(fb_pages, 0);
 		}
 
-		if(global.sel.zb && zb_pages != NULL)
+		if(global.sel.zb)
 		{
 			m_parent->UsePages(zb_pages, 1);
 		}

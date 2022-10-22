@@ -36,6 +36,16 @@ GSRendererDX::GSRendererDX(GSTextureCache* tc, const GSVector2& pixelcenter)
 	UserHacks_TCOffset = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("UserHacks_TCOffset", 0) : 0;
 	UserHacks_TCO_x = (UserHacks_TCOffset & 0xFFFF) / -1000.0f;
 	UserHacks_TCO_y = ((UserHacks_TCOffset >> 16) & 0xFFFF) / -1000.0f;
+	UserHacks_SkipPostProcessing = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("UserHacks_SkipPostProcessing", 0) : 0;
+	UserHacks_SkipIso_primclass = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("UserHacks_Check_SkipIso_primclass", 0): 0;
+	UserHacks_SkipIso_FBMSK = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("UserHacks_Check_SkipIso_FBMSK", 0): 0;
+	UserHacks_SkipIso_PSM = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("UserHacks_Check_SkipIso_PSM", 0): 0;
+	UserHacks_PSMhotkey = !!theApp.GetConfig("UserHacks", 0) && !!theApp.GetConfig("UserHacks_PSMhotkey", 0);
+	m_SkipIso = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("UserHacks_SkipIso", 0) : 0;
+	m_SkipIso_primclass = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("SkipIso_primclass", 0): 0;
+	m_SkipIso_FBMSK = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("SkipIso_FBMSK", 0): 0;
+	m_SkipIso_PSM = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("SkipIso_PSM", 0): 0;
+	m_NoAlphaTest = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("UserHacks_NoAlphaTest", 0) : 0;
 }
 
 GSRendererDX::~GSRendererDX()
@@ -47,8 +57,8 @@ void GSRendererDX::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 	GSDrawingEnvironment& env = m_env;
 	GSDrawingContext* context = m_context;
 
-	const GSVector2i& rtsize = ds ? ds->GetSize()  : rt->GetSize();
-	const GSVector2& rtscale = ds ? ds->GetScale() : rt->GetScale();
+	const GSVector2i& rtsize = rt->GetSize();
+	const GSVector2& rtscale = rt->GetScale();
 
 	bool DATE = m_context->TEST.DATE && context->FRAME.PSM != PSM_PSMCT24;
 
@@ -115,6 +125,240 @@ void GSRendererDX::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 
 	if(!IsOpaque())
 	{
+	  if(UserHacks_PSMhotkey)
+	  {
+		m_SkipIso_PSM = theApp.GetConfig("SkipIso_PSM", 0);
+	  }
+	  if(m_SkipIso==1)
+	  {	
+		if(UserHacks_SkipIso_primclass==true && UserHacks_SkipIso_FBMSK==true &&  UserHacks_SkipIso_PSM==true)
+		{
+			switch(m_SkipIso_FBMSK)
+			{
+			case 0:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 1:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0xFF000000 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 2:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0x00FFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 3:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0xFFFFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 4:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0x03FFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 5:
+				if (tex == 0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK >= 0xEFFFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			 }
+		}
+		else if(UserHacks_SkipIso_primclass==true && UserHacks_SkipIso_FBMSK==true &&  UserHacks_SkipIso_PSM==false)
+		{
+			switch(m_SkipIso_FBMSK)
+			{
+			case 0:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0) return;
+			  break;
+			case 1:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0xFF000000) return;
+			  break;
+			case 2:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0x00FFFFFF) return;
+			  break;
+			case 3:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0xFFFFFFFF) return;
+			  break;
+			case 4:
+			  if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0x03FFF) return;
+			  break;
+			case 5:
+				if (tex == 0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK >= 0xEFFFFFFF) return;
+			  break;
+			 }
+		}
+		else if(UserHacks_SkipIso_primclass==true && UserHacks_SkipIso_FBMSK==false &&  UserHacks_SkipIso_PSM==true)
+		{
+			if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+		}
+		else if(UserHacks_SkipIso_primclass==false && UserHacks_SkipIso_FBMSK==true &&  UserHacks_SkipIso_PSM==true)
+		{
+			switch(m_SkipIso_FBMSK)
+			{
+			case 0:
+			  if(tex==0 && context->FRAME.FBMSK ==0 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 1:
+			  if(tex==0 && context->FRAME.FBMSK ==0xFF000000 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 2:
+			  if(tex==0 && context->FRAME.FBMSK ==0x00FFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 3:
+			  if(tex==0 && context->FRAME.FBMSK ==0xFFFFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 4:
+			  if(tex==0 && context->FRAME.FBMSK ==0x03FFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 5:
+				if (tex == 0 && context->FRAME.FBMSK >= 0xEFFFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			 }
+		}
+		else if(UserHacks_SkipIso_primclass==false && UserHacks_SkipIso_FBMSK==false &&  UserHacks_SkipIso_PSM==true)
+		{
+			if(tex==0 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+		}
+		else if(UserHacks_SkipIso_primclass==false && UserHacks_SkipIso_FBMSK==true &&  UserHacks_SkipIso_PSM==false)
+		{
+			switch(m_SkipIso_FBMSK)
+			{
+			case 0:
+			  if(tex==0 && context->FRAME.FBMSK ==0) return;
+			  break;
+			case 1:
+			  if(tex==0 && context->FRAME.FBMSK ==0xFF000000) return;
+			  break;
+			case 2:
+			  if(tex==0 && context->FRAME.FBMSK ==0x00FFFFFF) return;
+			  break;
+			case 3:
+			  if(tex==0 && context->FRAME.FBMSK ==0xFFFFFFFF) return;
+			  break;
+			case 4:
+			  if(tex==0 && context->FRAME.FBMSK ==0x03FFF) return;
+			  break;
+			case 5:
+				if (tex == 0 && context->FRAME.FBMSK >= 0xEFFFFFFF) return;
+			  break;
+			 }
+		}
+		else if(UserHacks_SkipIso_primclass==true && UserHacks_SkipIso_FBMSK==false &&  UserHacks_SkipIso_PSM==false)
+		{
+			if(tex==0 && m_vt.m_primclass == m_SkipIso_primclass) return;
+		}
+		else if(UserHacks_SkipIso_primclass==false && UserHacks_SkipIso_FBMSK==false &&  UserHacks_SkipIso_PSM==false)
+		{
+			if(tex==0) return;
+		}
+	  }
+	  else if(m_SkipIso==2)
+	  {	
+		if(UserHacks_SkipIso_primclass==true && UserHacks_SkipIso_FBMSK==true &&  UserHacks_SkipIso_PSM==true)
+		{
+			switch(m_SkipIso_FBMSK)
+			{
+			case 0:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 1:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0xFF000000 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 2:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0x00FFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 3:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0xFFFFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 4:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0x03FFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 5:
+				if (tex != 0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK >= 0xEFFFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			 }
+		}
+		else if(UserHacks_SkipIso_primclass==true && UserHacks_SkipIso_FBMSK==true &&  UserHacks_SkipIso_PSM==false)
+		{
+			switch(m_SkipIso_FBMSK)
+			{
+			case 0:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0) return;
+			  break;
+			case 1:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0xFF000000) return;
+			  break;
+			case 2:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0x00FFFFFF) return;
+			  break;
+			case 3:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0xFFFFFFFF) return;
+			  break;
+			case 4:
+			  if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK ==0x03FFF) return;
+			  break;
+			case 5:
+				if (tex != 0 && m_vt.m_primclass == m_SkipIso_primclass && context->FRAME.FBMSK >= 0xEFFFFFFF) return;
+			  break;
+			 }
+		}
+		else if(UserHacks_SkipIso_primclass==true && UserHacks_SkipIso_FBMSK==false &&  UserHacks_SkipIso_PSM==true)
+		{
+			if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+		}
+		else if(UserHacks_SkipIso_primclass==false && UserHacks_SkipIso_FBMSK==true &&  UserHacks_SkipIso_PSM==true)
+		{
+			switch(m_SkipIso_FBMSK)
+			{
+			case 0:
+			  if(tex!=0 && context->FRAME.FBMSK ==0 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 1:
+			  if(tex!=0 && context->FRAME.FBMSK ==0xFF000000 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 2:
+			  if(tex!=0 && context->FRAME.FBMSK ==0x00FFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 3:
+			  if(tex!=0 && context->FRAME.FBMSK ==0xFFFFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 4:
+			  if(tex!=0 && context->FRAME.FBMSK ==0x03FFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			case 5:
+				if (tex != 0 && context->FRAME.FBMSK >= 0xEFFFFFFF && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+			  break;
+			 }
+		}
+		else if(UserHacks_SkipIso_primclass==false && UserHacks_SkipIso_FBMSK==false &&  UserHacks_SkipIso_PSM==true)
+		{
+			if(tex!=0 && m_context->TEX0.PSM == m_SkipIso_PSM) return;
+		}
+		else if(UserHacks_SkipIso_primclass==false && UserHacks_SkipIso_FBMSK==true &&  UserHacks_SkipIso_PSM==false)
+		{
+			switch(m_SkipIso_FBMSK)
+			{
+			case 0:
+			  if(tex!=0 && context->FRAME.FBMSK ==0) return;
+			  break;
+			case 1:
+			  if(tex!=0 && context->FRAME.FBMSK ==0xFF000000) return;
+			  break;
+			case 2:
+			  if(tex!=0 && context->FRAME.FBMSK ==0x00FFFFFF) return;
+			  break;
+			case 3:
+			  if(tex!=0 && context->FRAME.FBMSK ==0xFFFFFFFF) return;
+			  break;
+			case 4:
+			  if(tex!=0 && context->FRAME.FBMSK ==0x03FFF) return;
+			  break;
+			case 5:
+				if (tex != 0 && context->FRAME.FBMSK >= 0xEFFFFFFF) return;
+			  break;
+			 }
+		}
+		else if(UserHacks_SkipIso_primclass==true && UserHacks_SkipIso_FBMSK==false &&  UserHacks_SkipIso_PSM==false)
+		{
+			if(tex!=0 && m_vt.m_primclass == m_SkipIso_primclass) return;
+		}
+		else if(UserHacks_SkipIso_primclass==false && UserHacks_SkipIso_FBMSK==false &&  UserHacks_SkipIso_PSM==false)
+		{
+			if(tex!=0) return;
+		}
+	}
 		om_bsel.abe = PRIM->ABE || PRIM->AA1 && m_vt.m_primclass == GS_LINE_CLASS;
 
 		om_bsel.a = context->ALPHA.A;
@@ -137,7 +381,7 @@ void GSRendererDX::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 				//ASSERT(0);
 			}
 		}
-	}
+	 }
 
 	om_bsel.wrgba = ~GSVector4i::load((int)context->FRAME.FBMSK).eq8(GSVector4i::xffffffff()).mask();
 
@@ -192,14 +436,14 @@ void GSRendererDX::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 	float oy = (float)(int)context->XYOFFSET.OFY;
 	float ox2 = 2.0f * m_pixelcenter.x / rtsize.x;
 	float oy2 = 2.0f * m_pixelcenter.y / rtsize.y;
-
+	
 	//This hack subtracts around half a pixel from OFX and OFY. (Cannot do this directly,
 	//because DX10 and DX9 have a different pixel center.)
 	//
 	//The resulting shifted output aligns better with common blending / corona / blurring effects,
 	//but introduces a few bad pixels on the edges.
 
-	if(rt && rt->LikelyOffset)
+	if(rt->LikelyOffset)
 	{
 		// DX9 has pixelcenter set to 0.0, so give it some value here
 
@@ -225,91 +469,6 @@ void GSRendererDX::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 	GSDeviceDX::PSSamplerSelector ps_ssel;
 	GSDeviceDX::PSConstantBuffer ps_cb;
 
-	// Gregory: code is not yet ready so let's only enable it when
-	// CRC is below the FULL level
-	if (m_texture_shuffle && (m_crc_hack_level < 3)) {
-		ps_sel.shuffle = 1;
-		ps_sel.fmt = 0;
-
-		const GIFRegXYOFFSET& o = m_context->XYOFFSET;
-		GSVertex* v = &m_vertex.buff[0];
-		size_t count = m_vertex.next;
-
-		// vertex position is 8 to 16 pixels, therefore it is the 16-31 bits of the colors
-		int  pos = (v[0].XYZ.X - o.OFX) & 0xFF;
-		bool write_ba = (pos > 112 && pos < 136);
-		// Read texture is 8 to 16 pixels (same as above)
-		int tex_pos = v[0].U & 0xFF;
-		ps_sel.read_ba = (tex_pos > 112 && tex_pos < 144);
-
-		GL_INS("Color shuffle %s => %s", ps_sel.read_ba ? "BA" : "RG", write_ba ? "BA" : "RG");
-
-		// Convert the vertex info to a 32 bits color format equivalent
-		for (size_t i = 0; i < count; i += 2) {
-			if (write_ba)
-				v[i].XYZ.X -= 128u;
-			else
-				v[i + 1].XYZ.X += 128u;
-
-			if (ps_sel.read_ba)
-				v[i].U -= 128u;
-			else
-				v[i + 1].U += 128u;
-
-			// Height is too big (2x).
-			int tex_offset = v[i].V & 0xF;
-			GSVector4i offset(o.OFY, tex_offset, o.OFY, tex_offset);
-
-			GSVector4i tmp(v[i].XYZ.Y, v[i].V, v[i + 1].XYZ.Y, v[i + 1].V);
-			tmp = GSVector4i(tmp - offset).srl32(1) + offset;
-
-			v[i].XYZ.Y = tmp.x;
-			v[i].V = tmp.y;
-			v[i + 1].XYZ.Y = tmp.z;
-			v[i + 1].V = tmp.w;
-		}
-
-		// Please bang my head against the wall!
-		// 1/ Reduce the frame mask to a 16 bit format
-		const uint32& m = context->FRAME.FBMSK;
-		uint32 fbmask = ((m >> 3) & 0x1F) | ((m >> 6) & 0x3E0) | ((m >> 9) & 0x7C00) | ((m >> 31) & 0x8000);
-		om_bsel.wrgba = 0;
-
-		// 2 Select the new mask (Please someone put SSE here)
-		if ((fbmask & 0xFF) == 0) {
-			if (write_ba)
-				om_bsel.wb = 1;
-			else
-				om_bsel.wr = 1;
-		}
-		else if ((fbmask & 0xFF) != 0xFF) {
-#ifdef _DEBUG
-			fprintf(stderr, "Please fix me! wb %d wr %d\n", om_bsel.wb, om_bsel.wr);
-#endif
-			//ASSERT(0);
-		}
-
-		fbmask >>= 8;
-		if ((fbmask & 0xFF) == 0) {
-			if (write_ba)
-				om_bsel.wa = 1;
-			else
-				om_bsel.wg = 1;
-		}
-		else if ((fbmask & 0xFF) != 0xFF) {
-#ifdef _DEBUG
-			fprintf(stderr, "Please fix me! wa %d wg %d\n", om_bsel.wa, om_bsel.wg);
-#endif
-			//ASSERT(0);
-		}
-
-	}
-	else {
-		//ps_sel.fmt = GSLocalMemory::m_psm[context->FRAME.PSM].fmt;
-
-		om_bsel.wrgba = ~GSVector4i::load((int)context->FRAME.FBMSK).eq8(GSVector4i::xffffffff()).mask();
-	}
-
 	if(DATE)
 	{
 		if(dev->HasStencil())
@@ -330,8 +489,8 @@ void GSRendererDX::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 	ps_sel.clr1 = om_bsel.IsCLR1();
 	ps_sel.fba = context->FBA.FBA;
 	ps_sel.aout = context->FRAME.PSM == PSM_PSMCT16 || context->FRAME.PSM == PSM_PSMCT16S || (context->FRAME.FBMSK & 0xff000000) == 0x7f000000 ? 1 : 0;
-	ps_sel.aout &= !ps_sel.shuffle;
-	if(UserHacks_AlphaHack) ps_sel.aout = 1;
+		
+	if(UserHacks_AlphaHack || m_game.title == CRC::ValkyrieProfile2 || m_game.title == CRC::ShadowofRome) ps_sel.aout = 1;
 
 	if(PRIM->FGE)
 	{
@@ -340,10 +499,22 @@ void GSRendererDX::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 		ps_cb.FogColor_AREF = GSVector4::rgba32(env.FOGCOL.u32[0]) / 255;
 	}
 
-	if(context->TEST.ATE)
-		ps_sel.atst = context->TEST.ATST;
+	if (context->TEST.ATE)
+	{
+		if (m_NoAlphaTest == 1)
+		{
+			ps_sel.atst = ATST_ALWAYS;
+		}
+		else
+		{
+			ps_sel.atst = context->TEST.ATST;
+		}
+	}
 	else
+	{
 		ps_sel.atst = ATST_ALWAYS;
+	}
+		
 
 	if (context->TEST.ATE && context->TEST.ATST > 1)
 		ps_cb.FogColor_AREF.a = (float)context->TEST.AREF;
@@ -377,11 +548,7 @@ void GSRendererDX::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 
 		ps_sel.wms = context->CLAMP.WMS;
 		ps_sel.wmt = context->CLAMP.WMT;
-		if (ps_sel.shuffle) {
-			ps_sel.fmt = 0;
-		} else {
-			ps_sel.fmt = tex->m_palette ? cpsm.fmt | 4 : cpsm.fmt;
-		}
+		ps_sel.fmt = tex->m_palette? cpsm.fmt | 4 : cpsm.fmt;
 		ps_sel.aem = env.TEXA.AEM;
 		ps_sel.tfx = context->TEX0.TFX;
 		ps_sel.tcc = context->TEX0.TCC;
@@ -475,7 +642,14 @@ void GSRendererDX::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 
 		static const uint32 iatst[] = {1, 0, 5, 6, 7, 2, 3, 4};
 
-		ps_sel.atst = iatst[ps_sel.atst];
+		if (m_NoAlphaTest == 2)
+		{
+			ps_sel.atst = ATST_ALWAYS;
+		}
+		else
+		{
+			ps_sel.atst = iatst[ps_sel.atst];
+		}
 
 		dev->SetupPS(ps_sel, &ps_cb, ps_ssel);
 

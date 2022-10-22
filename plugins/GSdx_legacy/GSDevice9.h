@@ -79,8 +79,10 @@ class GSDevice9 : public GSDeviceDX
 	void DoFXAA(GSTexture* sTex, GSTexture* dTex);
 	void DoShadeBoost(GSTexture* sTex, GSTexture* dTex);
 	void DoExternalFX(GSTexture* sTex, GSTexture* dTex);
+	void DoCustomShader(GSTexture* sTex, GSTexture* dTex);
 
 	void InitExternalFX();
+	void InitCustomShader();
 	void InitFXAA();
 
 	//
@@ -124,6 +126,7 @@ public: // TODO
 
 	bool FXAA_Compiled;
 	bool ExShader_Compiled;
+	bool CustomShader_Compiled;
 
 	struct
 	{
@@ -151,6 +154,11 @@ public: // TODO
 	{
 		CComPtr<IDirect3DPixelShader9> ps;
 	} m_shaderfx;
+
+	struct
+	{
+		CComPtr<IDirect3DPixelShader9> ps;
+	} m_customshader;
 
 	struct
 	{
@@ -227,7 +235,7 @@ public:
 	void IASetPrimitiveTopology(D3DPRIMITIVETYPE topology);
 	void VSSetShader(IDirect3DVertexShader9* vs, const float* vs_cb, int vs_cb_len);
 	void PSSetShaderResources(GSTexture* sr0, GSTexture* sr1);
-	void PSSetShaderResource(int i, GSTexture* sr);
+	void PSSetShaderResource(int i, GSTexture* sRect);
 	void PSSetShader(IDirect3DPixelShader9* ps, const float* ps_cb, int ps_cb_len);
 	void PSSetSamplerState(Direct3DSamplerState9* ss);
 	void OMSetDepthStencilState(Direct3DDepthStencilState9* dss);
@@ -237,8 +245,11 @@ public:
 	IDirect3DDevice9* operator->() {return m_dev;}
 	operator IDirect3DDevice9*() {return m_dev;}
 
-	void CompileShader(const char *source, size_t size, const char *filename, const string& entry, const D3D_SHADER_MACRO* macro, IDirect3DVertexShader9** vs, const D3DVERTEXELEMENT9* layout, int count, IDirect3DVertexDeclaration9** il);
-	void CompileShader(const char *source, size_t size, const char *filename, const string& entry, const D3D_SHADER_MACRO* macro, IDirect3DPixelShader9** ps);
+	void CompileShader(uint32 id, const string& entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, const D3DVERTEXELEMENT9* layout, int count, IDirect3DVertexDeclaration9** il);
+	void CompileShader(uint32 id, const string& entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps);
+
+	void CompileShader(const char* fn, const string& entry, const D3DXMACRO* macro, IDirect3DVertexShader9** vs, const D3DVERTEXELEMENT9* layout, int count, IDirect3DVertexDeclaration9** il);
+	void CompileShader(const char* fn, const string& entry, const D3DXMACRO* macro, IDirect3DPixelShader9** ps);
 
 	void SetupVS(VSSelector sel, const VSConstantBuffer* cb);
 	void SetupGS(GSSelector sel) {}

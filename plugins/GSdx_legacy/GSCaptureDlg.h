@@ -23,7 +23,7 @@
 
 #include "GSDialog.h"
 #include "resource.h"
-#include <streams.h>
+#include "baseclasses/streams.h"
 
 class GSCaptureDlg : public GSDialog
 {

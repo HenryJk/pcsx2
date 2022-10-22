@@ -22,146 +22,132 @@
 #include "GLLoader.h"
 #include "GSdx.h"
 
-PFNGLACTIVETEXTUREPROC                 gl_ActiveTexture                    = NULL;
-PFNGLBLENDCOLORPROC                    gl_BlendColor                       = NULL;
-
-PFNGLATTACHSHADERPROC                  glAttachShader                      = NULL;
-PFNGLBINDBUFFERPROC                    glBindBuffer                        = NULL;
-PFNGLBINDBUFFERBASEPROC                glBindBufferBase                    = NULL;
-PFNGLBINDBUFFERRANGEPROC               glBindBufferRange                   = NULL;
-PFNGLBINDFRAMEBUFFERPROC               glBindFramebuffer                   = NULL;
-PFNGLBINDSAMPLERPROC                   glBindSampler                       = NULL;
-PFNGLBINDVERTEXARRAYPROC               glBindVertexArray                   = NULL;
-PFNGLBLENDEQUATIONSEPARATEIARBPROC     glBlendEquationSeparateiARB         = NULL;
-PFNGLBLENDFUNCSEPARATEIARBPROC         glBlendFuncSeparateiARB             = NULL;
-PFNGLBLITFRAMEBUFFERPROC               glBlitFramebuffer                   = NULL;
-PFNGLBUFFERDATAPROC                    glBufferData                        = NULL;
-PFNGLCHECKFRAMEBUFFERSTATUSPROC        glCheckFramebufferStatus            = NULL;
-PFNGLCLEARBUFFERFVPROC                 glClearBufferfv                     = NULL;
-PFNGLCLEARBUFFERIVPROC                 glClearBufferiv                     = NULL;
-PFNGLCLEARBUFFERUIVPROC                glClearBufferuiv                    = NULL;
-PFNGLCOLORMASKIPROC                    glColorMaski                        = NULL;
-PFNGLCOMPILESHADERPROC                 glCompileShader                     = NULL;
-PFNGLCREATEPROGRAMPROC                 glCreateProgram                     = NULL;
-PFNGLCREATESHADERPROC                  glCreateShader                      = NULL;
-PFNGLCREATESHADERPROGRAMVPROC          glCreateShaderProgramv              = NULL;
-PFNGLDELETEBUFFERSPROC                 glDeleteBuffers                     = NULL;
-PFNGLDELETEFRAMEBUFFERSPROC            glDeleteFramebuffers                = NULL;
-PFNGLDELETEPROGRAMPROC                 glDeleteProgram                     = NULL;
-PFNGLDELETESAMPLERSPROC                glDeleteSamplers                    = NULL;
-PFNGLDELETESHADERPROC                  glDeleteShader                      = NULL;
-PFNGLDELETEVERTEXARRAYSPROC            glDeleteVertexArrays                = NULL;
-PFNGLDETACHSHADERPROC                  glDetachShader                      = NULL;
-PFNGLDRAWBUFFERSPROC                   glDrawBuffers                       = NULL;
-PFNGLDRAWELEMENTSBASEVERTEXPROC        glDrawElementsBaseVertex            = NULL;
-PFNGLENABLEVERTEXATTRIBARRAYPROC       glEnableVertexAttribArray           = NULL;
-PFNGLFRAMEBUFFERRENDERBUFFERPROC       glFramebufferRenderbuffer           = NULL;
-PFNGLFRAMEBUFFERTEXTURE2DPROC          glFramebufferTexture2D              = NULL;
-PFNGLGENBUFFERSPROC                    glGenBuffers                        = NULL;
-PFNGLGENFRAMEBUFFERSPROC               glGenFramebuffers                   = NULL;
-PFNGLGENSAMPLERSPROC                   glGenSamplers                       = NULL;
-PFNGLGENVERTEXARRAYSPROC               glGenVertexArrays                   = NULL;
-PFNGLGETBUFFERPARAMETERIVPROC          glGetBufferParameteriv              = NULL;
-PFNGLGETDEBUGMESSAGELOGARBPROC         glGetDebugMessageLogARB             = NULL;
-PFNGLDEBUGMESSAGECALLBACKPROC          glDebugMessageCallback              = NULL;
-PFNGLGETPROGRAMINFOLOGPROC             glGetProgramInfoLog                 = NULL;
-PFNGLGETPROGRAMIVPROC                  glGetProgramiv                      = NULL;
-PFNGLGETSHADERIVPROC                   glGetShaderiv                       = NULL;
-PFNGLGETSTRINGIPROC                    glGetStringi                        = NULL;
-PFNGLISFRAMEBUFFERPROC                 glIsFramebuffer                     = NULL;
-PFNGLLINKPROGRAMPROC                   glLinkProgram                       = NULL;
-PFNGLMAPBUFFERPROC                     glMapBuffer                         = NULL;
-PFNGLMAPBUFFERRANGEPROC                glMapBufferRange                    = NULL;
-PFNGLPROGRAMPARAMETERIPROC             glProgramParameteri                 = NULL;
-PFNGLSAMPLERPARAMETERFPROC             glSamplerParameterf                 = NULL;
-PFNGLSAMPLERPARAMETERIPROC             glSamplerParameteri                 = NULL;
-PFNGLSHADERSOURCEPROC                  glShaderSource                      = NULL;
-PFNGLUNIFORM1IPROC                     glUniform1i                         = NULL;
-PFNGLUNMAPBUFFERPROC                   glUnmapBuffer                       = NULL;
-PFNGLUSEPROGRAMSTAGESPROC              glUseProgramStages                  = NULL;
-PFNGLVERTEXATTRIBIPOINTERPROC          glVertexAttribIPointer              = NULL;
-PFNGLVERTEXATTRIBPOINTERPROC           glVertexAttribPointer               = NULL;
-PFNGLBUFFERSUBDATAPROC                 glBufferSubData                     = NULL;
-PFNGLFENCESYNCPROC                     glFenceSync                         = NULL;
-PFNGLDELETESYNCPROC                    glDeleteSync                        = NULL;
-PFNGLCLIENTWAITSYNCPROC                glClientWaitSync                    = NULL;
-PFNGLFLUSHMAPPEDBUFFERRANGEPROC        glFlushMappedBufferRange            = NULL;
-PFNGLBLENDEQUATIONSEPARATEPROC         glBlendEquationSeparate             = NULL;
-PFNGLBLENDFUNCSEPARATEPROC             glBlendFuncSeparate                 = NULL;
-// Query object
-PFNGLBEGINQUERYPROC                    glBeginQuery                        = NULL;
-PFNGLENDQUERYPROC                      glEndQuery                          = NULL;
-PFNGLGETQUERYIVPROC                    glGetQueryiv                        = NULL;
-PFNGLGETQUERYOBJECTIVPROC              glGetQueryObjectiv                  = NULL;
-PFNGLGETQUERYOBJECTUIVPROC             glGetQueryObjectuiv                 = NULL;
-PFNGLQUERYCOUNTERPROC                  glQueryCounter                      = NULL;
-PFNGLGETQUERYOBJECTI64VPROC            glGetQueryObjecti64v                = NULL;
-PFNGLGETQUERYOBJECTUI64VPROC           glGetQueryObjectui64v               = NULL;
-PFNGLGETINTEGER64VPROC                 glGetInteger64v                     = NULL;
+PFNGLACTIVETEXTUREPROC                 gl_ActiveTexture                     = NULL;
+PFNGLBLENDCOLORPROC                    gl_BlendColor                        = NULL;
+PFNGLATTACHSHADERPROC                  gl_AttachShader                      = NULL;
+PFNGLBINDBUFFERPROC                    gl_BindBuffer                        = NULL;
+PFNGLBINDBUFFERBASEPROC                gl_BindBufferBase                    = NULL;
+PFNGLBINDFRAMEBUFFERPROC               gl_BindFramebuffer                   = NULL;
+PFNGLBINDSAMPLERPROC                   gl_BindSampler                       = NULL;
+PFNGLBINDVERTEXARRAYPROC               gl_BindVertexArray                   = NULL;
+PFNGLBLENDEQUATIONSEPARATEIARBPROC     gl_BlendEquationSeparateiARB         = NULL;
+PFNGLBLENDFUNCSEPARATEIARBPROC         gl_BlendFuncSeparateiARB             = NULL;
+PFNGLBLITFRAMEBUFFERPROC               gl_BlitFramebuffer                   = NULL;
+PFNGLBUFFERDATAPROC                    gl_BufferData                        = NULL;
+PFNGLCHECKFRAMEBUFFERSTATUSPROC        gl_CheckFramebufferStatus            = NULL;
+PFNGLCLEARBUFFERFVPROC                 gl_ClearBufferfv                     = NULL;
+PFNGLCLEARBUFFERIVPROC                 gl_ClearBufferiv                     = NULL;
+PFNGLCLEARBUFFERUIVPROC                gl_ClearBufferuiv                    = NULL;
+PFNGLCOLORMASKIPROC                    gl_ColorMaski                        = NULL;
+PFNGLCOMPILESHADERPROC                 gl_CompileShader                     = NULL;
+PFNGLCREATEPROGRAMPROC                 gl_CreateProgram                     = NULL;
+PFNGLCREATESHADERPROC                  gl_CreateShader                      = NULL;
+PFNGLCREATESHADERPROGRAMVPROC          gl_CreateShaderProgramv              = NULL;
+PFNGLDELETEBUFFERSPROC                 gl_DeleteBuffers                     = NULL;
+PFNGLDELETEFRAMEBUFFERSPROC            gl_DeleteFramebuffers                = NULL;
+PFNGLDELETEPROGRAMPROC                 gl_DeleteProgram                     = NULL;
+PFNGLDELETESAMPLERSPROC                gl_DeleteSamplers                    = NULL;
+PFNGLDELETESHADERPROC                  gl_DeleteShader                      = NULL;
+PFNGLDELETEVERTEXARRAYSPROC            gl_DeleteVertexArrays                = NULL;
+PFNGLDETACHSHADERPROC                  gl_DetachShader                      = NULL;
+PFNGLDRAWBUFFERSPROC                   gl_DrawBuffers                       = NULL;
+PFNGLDRAWELEMENTSBASEVERTEXPROC        gl_DrawElementsBaseVertex            = NULL;
+PFNGLENABLEVERTEXATTRIBARRAYPROC       gl_EnableVertexAttribArray           = NULL;
+PFNGLFRAMEBUFFERRENDERBUFFERPROC       gl_FramebufferRenderbuffer           = NULL;
+PFNGLFRAMEBUFFERTEXTURE2DPROC          gl_FramebufferTexture2D              = NULL;
+PFNGLGENBUFFERSPROC                    gl_GenBuffers                        = NULL;
+PFNGLGENFRAMEBUFFERSPROC               gl_GenFramebuffers                   = NULL;
+PFNGLGENSAMPLERSPROC                   gl_GenSamplers                       = NULL;
+PFNGLGENVERTEXARRAYSPROC               gl_GenVertexArrays                   = NULL;
+PFNGLGETBUFFERPARAMETERIVPROC          gl_GetBufferParameteriv              = NULL;
+PFNGLGETDEBUGMESSAGELOGARBPROC         gl_GetDebugMessageLogARB             = NULL;
+PFNGLDEBUGMESSAGECALLBACKPROC          gl_DebugMessageCallback              = NULL;
+PFNGLGETPROGRAMINFOLOGPROC             gl_GetProgramInfoLog                 = NULL;
+PFNGLGETPROGRAMIVPROC                  gl_GetProgramiv                      = NULL;
+PFNGLGETSHADERIVPROC                   gl_GetShaderiv                       = NULL;
+PFNGLGETSTRINGIPROC                    gl_GetStringi                        = NULL;
+PFNGLISFRAMEBUFFERPROC                 gl_IsFramebuffer                     = NULL;
+PFNGLLINKPROGRAMPROC                   gl_LinkProgram                       = NULL;
+PFNGLMAPBUFFERPROC                     gl_MapBuffer                         = NULL;
+PFNGLMAPBUFFERRANGEPROC                gl_MapBufferRange                    = NULL;
+PFNGLPROGRAMPARAMETERIPROC             gl_ProgramParameteri                 = NULL;
+PFNGLSAMPLERPARAMETERFPROC             gl_SamplerParameterf                 = NULL;
+PFNGLSAMPLERPARAMETERIPROC             gl_SamplerParameteri                 = NULL;
+PFNGLSHADERSOURCEPROC                  gl_ShaderSource                      = NULL;
+PFNGLUNIFORM1IPROC                     gl_Uniform1i                         = NULL;
+PFNGLUNMAPBUFFERPROC                   gl_UnmapBuffer                       = NULL;
+PFNGLUSEPROGRAMSTAGESPROC              gl_UseProgramStages                  = NULL;
+PFNGLVERTEXATTRIBIPOINTERPROC          gl_VertexAttribIPointer              = NULL;
+PFNGLVERTEXATTRIBPOINTERPROC           gl_VertexAttribPointer               = NULL;
+PFNGLBUFFERSUBDATAPROC                 gl_BufferSubData                     = NULL;
+PFNGLFENCESYNCPROC                     gl_FenceSync                         = NULL;
+PFNGLDELETESYNCPROC                    gl_DeleteSync                        = NULL;
+PFNGLCLIENTWAITSYNCPROC                gl_ClientWaitSync                    = NULL;
+PFNGLFLUSHMAPPEDBUFFERRANGEPROC        gl_FlushMappedBufferRange            = NULL;
 // GL4.0
+PFNGLUNIFORMSUBROUTINESUIVPROC         gl_UniformSubroutinesuiv             = NULL;
 // GL4.1
-PFNGLBINDPROGRAMPIPELINEPROC           glBindProgramPipeline               = NULL;
-PFNGLGENPROGRAMPIPELINESPROC           glGenProgramPipelines               = NULL;
-PFNGLDELETEPROGRAMPIPELINESPROC        glDeleteProgramPipelines            = NULL;
-PFNGLGETPROGRAMPIPELINEIVPROC          glGetProgramPipelineiv              = NULL;
-PFNGLVALIDATEPROGRAMPIPELINEPROC       glValidateProgramPipeline           = NULL;
-PFNGLGETPROGRAMPIPELINEINFOLOGPROC     glGetProgramPipelineInfoLog         = NULL;
-PFNGLGETPROGRAMBINARYPROC              glGetProgramBinary                  = NULL;
-PFNGLVIEWPORTINDEXEDFPROC              glViewportIndexedf                  = NULL;
-PFNGLVIEWPORTINDEXEDFVPROC             glViewportIndexedfv                 = NULL;
-PFNGLSCISSORINDEXEDPROC                glScissorIndexed                    = NULL;
-PFNGLSCISSORINDEXEDVPROC               glScissorIndexedv                   = NULL;
+PFNGLBINDPROGRAMPIPELINEPROC           gl_BindProgramPipeline               = NULL;
+PFNGLGENPROGRAMPIPELINESPROC           gl_GenProgramPipelines               = NULL;
+PFNGLDELETEPROGRAMPIPELINESPROC        gl_DeleteProgramPipelines            = NULL;
+PFNGLGETPROGRAMPIPELINEIVPROC          gl_GetProgramPipelineiv              = NULL;
+PFNGLVALIDATEPROGRAMPIPELINEPROC       gl_ValidateProgramPipeline           = NULL;
+PFNGLGETPROGRAMPIPELINEINFOLOGPROC     gl_GetProgramPipelineInfoLog         = NULL;
 // NO GL4.1
-PFNGLUSEPROGRAMPROC                    glUseProgram                        = NULL;
-PFNGLGETSHADERINFOLOGPROC              glGetShaderInfoLog                  = NULL;
-PFNGLPROGRAMUNIFORM1IPROC              glProgramUniform1i                  = NULL;
+PFNGLUSEPROGRAMPROC                    gl_UseProgram                        = NULL;
+PFNGLGETSHADERINFOLOGPROC              gl_GetShaderInfoLog                  = NULL;
+PFNGLPROGRAMUNIFORM1IPROC              gl_ProgramUniform1i                  = NULL;
 // GL4.3
-PFNGLCOPYIMAGESUBDATAPROC              glCopyImageSubData                  = NULL;
-PFNGLINVALIDATETEXIMAGEPROC            glInvalidateTexImage                = NULL;
-PFNGLPUSHDEBUGGROUPPROC                glPushDebugGroup                    = NULL;
-PFNGLPOPDEBUGGROUPPROC                 glPopDebugGroup                     = NULL;
-PFNGLDEBUGMESSAGEINSERTPROC            glDebugMessageInsert                = NULL;
-PFNGLDEBUGMESSAGECONTROLPROC           glDebugMessageControl               = NULL;
+PFNGLCOPYIMAGESUBDATAPROC              gl_CopyImageSubData                  = NULL;
+PFNGLINVALIDATETEXIMAGEPROC            gl_InvalidateTexImage                = NULL;
+PFNGLPUSHDEBUGGROUPPROC                gl_PushDebugGroup                    = NULL;
+PFNGLPOPDEBUGGROUPPROC                 gl_PopDebugGroup                     = NULL;
+PFNGLDEBUGMESSAGEINSERTPROC            gl_DebugMessageInsert                = NULL;
 // GL4.2
-PFNGLBINDIMAGETEXTUREPROC              glBindImageTexture                  = NULL;
-PFNGLMEMORYBARRIERPROC                 glMemoryBarrier                     = NULL;
-PFNGLTEXSTORAGE2DPROC                  glTexStorage2D                      = NULL;
+PFNGLBINDIMAGETEXTUREPROC              gl_BindImageTexture                  = NULL;
+PFNGLMEMORYBARRIERPROC                 gl_MemoryBarrier                     = NULL;
+PFNGLTEXSTORAGE2DPROC                  gl_TexStorage2D                      = NULL;
 // GL4.4
-PFNGLCLEARTEXIMAGEPROC                 glClearTexImage                     = NULL;
-PFNGLBUFFERSTORAGEPROC                 glBufferStorage                     = NULL;
+PFNGLCLEARTEXIMAGEPROC                 gl_ClearTexImage                     = NULL;
+PFNGLBUFFERSTORAGEPROC                 gl_BufferStorage                     = NULL;
+// GL_ARB_bindless_texture (GL5?)
+PFNGLGETTEXTURESAMPLERHANDLEARBPROC    gl_GetTextureSamplerHandleARB        = NULL;
+PFNGLMAKETEXTUREHANDLERESIDENTARBPROC  gl_MakeTextureHandleResidentARB      = NULL;
+PFNGLMAKETEXTUREHANDLENONRESIDENTARBPROC gl_MakeTextureHandleNonResidentARB = NULL;
+PFNGLUNIFORMHANDLEUI64VARBPROC         gl_UniformHandleui64vARB             = NULL;
+PFNGLPROGRAMUNIFORMHANDLEUI64VARBPROC  gl_ProgramUniformHandleui64vARB      = NULL;
 
 // GL4.5
-PFNGLCREATETEXTURESPROC                glCreateTextures                    = NULL;
-PFNGLTEXTURESTORAGE2DPROC              glTextureStorage2D                  = NULL;
-PFNGLTEXTURESUBIMAGE2DPROC             glTextureSubImage2D                 = NULL;
-PFNGLCOPYTEXTURESUBIMAGE2DPROC         glCopyTextureSubImage2D             = NULL;
-PFNGLBINDTEXTUREUNITPROC               glBindTextureUnit                   = NULL;
-PFNGLGETTEXTUREIMAGEPROC               glGetTextureImage                   = NULL;
-PFNGLTEXTUREPARAMETERIPROC             glTextureParameteri                 = NULL;
+PFNGLCREATETEXTURESPROC				   gl_CreateTextures                    = NULL;
+PFNGLTEXTURESTORAGE2DPROC			   gl_TextureStorage2D                  = NULL;
+PFNGLTEXTURESUBIMAGE2DPROC			   gl_TextureSubImage2D                 = NULL;
+PFNGLCOPYTEXTURESUBIMAGE2DPROC		   gl_CopyTextureSubImage2D             = NULL;
+PFNGLBINDTEXTUREUNITPROC			   gl_BindTextureUnit                   = NULL;
+PFNGLGETTEXTUREIMAGEPROC               gl_GetTextureImage                   = NULL;
 
-PFNGLCREATEFRAMEBUFFERSPROC            glCreateFramebuffers                = NULL;
-PFNGLCLEARNAMEDFRAMEBUFFERFVPROC       glClearNamedFramebufferfv           = NULL;
-PFNGLCLEARNAMEDFRAMEBUFFERIVPROC       glClearNamedFramebufferiv           = NULL;
-PFNGLCLEARNAMEDFRAMEBUFFERUIVPROC      glClearNamedFramebufferuiv          = NULL;
-PFNGLNAMEDFRAMEBUFFERTEXTUREPROC       glNamedFramebufferTexture           = NULL;
-PFNGLNAMEDFRAMEBUFFERDRAWBUFFERSPROC   glNamedFramebufferDrawBuffers       = NULL;
-PFNGLNAMEDFRAMEBUFFERREADBUFFERPROC    glNamedFramebufferReadBuffer        = NULL;
-PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC   glCheckNamedFramebufferStatus       = NULL;
+PFNGLCREATEFRAMEBUFFERSPROC            gl_CreateFramebuffers                = NULL;
+PFNGLCLEARNAMEDFRAMEBUFFERFVPROC       gl_ClearNamedFramebufferfv           = NULL;
+PFNGLCLEARNAMEDFRAMEBUFFERIVPROC       gl_ClearNamedFramebufferiv           = NULL;
+PFNGLCLEARNAMEDFRAMEBUFFERUIVPROC      gl_ClearNamedFramebufferuiv          = NULL;
+PFNGLNAMEDFRAMEBUFFERTEXTUREPROC       gl_NamedFramebufferTexture           = NULL;
+PFNGLNAMEDFRAMEBUFFERDRAWBUFFERSPROC   gl_NamedFramebufferDrawBuffers       = NULL;
+PFNGLNAMEDFRAMEBUFFERREADBUFFERPROC    gl_NamedFramebufferReadBuffer        = NULL;
+PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC   gl_CheckNamedFramebufferStatus       = NULL;
 
-PFNGLCREATEBUFFERSPROC                 glCreateBuffers                     = NULL;
-PFNGLNAMEDBUFFERSTORAGEPROC            glNamedBufferStorage                = NULL;
-PFNGLNAMEDBUFFERDATAPROC               glNamedBufferData                   = NULL;
-PFNGLNAMEDBUFFERSUBDATAPROC            glNamedBufferSubData                = NULL;
-PFNGLMAPNAMEDBUFFERPROC                glMapNamedBuffer                    = NULL;
-PFNGLMAPNAMEDBUFFERRANGEPROC           glMapNamedBufferRange               = NULL;
-PFNGLUNMAPNAMEDBUFFERPROC              glUnmapNamedBuffer                  = NULL;
-PFNGLFLUSHMAPPEDNAMEDBUFFERRANGEPROC   glFlushMappedNamedBufferRange       = NULL;
+PFNGLCREATEBUFFERSPROC                 gl_CreateBuffers                     = NULL;
+PFNGLNAMEDBUFFERSTORAGEPROC            gl_NamedBufferStorage                = NULL;
+PFNGLNAMEDBUFFERDATAPROC               gl_NamedBufferData                   = NULL;
+PFNGLNAMEDBUFFERSUBDATAPROC            gl_NamedBufferSubData                = NULL;
+PFNGLMAPNAMEDBUFFERPROC                gl_MapNamedBuffer                    = NULL;
+PFNGLMAPNAMEDBUFFERRANGEPROC           gl_MapNamedBufferRange               = NULL;
+PFNGLUNMAPNAMEDBUFFERPROC              gl_UnmapNamedBuffer                  = NULL;
+PFNGLFLUSHMAPPEDNAMEDBUFFERRANGEPROC   gl_FlushMappedNamedBufferRange       = NULL;
 
-PFNGLCREATESAMPLERSPROC                glCreateSamplers                    = NULL;
-PFNGLCREATEPROGRAMPIPELINESPROC        glCreateProgramPipelines            = NULL;
+PFNGLCREATESAMPLERSPROC                gl_CreateSamplers                    = NULL;
+PFNGLCREATEPROGRAMPIPELINESPROC        gl_CreateProgramPipelines            = NULL;
 
-PFNGLCLIPCONTROLPROC                   glClipControl                       = NULL;
-PFNGLTEXTUREBARRIERPROC                glTextureBarrier                    = NULL;
+PFNGLCLIPCONTROLPROC                   gl_ClipControl                       = NULL;
+PFNGLTEXTUREBARRIERPROC                gl_TextureBarrier                    = NULL;
 
 namespace Emulate_DSA {
 	// Texture entry point
@@ -176,7 +162,7 @@ namespace Emulate_DSA {
 
 	void APIENTRY TextureStorage(GLuint texture, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height) {
 		BindTextureUnit(7, texture);
-		glTexStorage2D(GL_TEXTURE_2D, levels, internalformat, width, height);
+		gl_TexStorage2D(GL_TEXTURE_2D, levels, internalformat, width, height);
 	}
 
 	void APIENTRY TextureSubImage(GLuint texture, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels) {
@@ -194,11 +180,6 @@ namespace Emulate_DSA {
 		glGetTexImage(GL_TEXTURE_2D, level, format, type, pixels);
 	}
 
-	void APIENTRY TextureParameteri (GLuint texture, GLenum pname, GLint param) {
-		BindTextureUnit(7, texture);
-		glTexParameteri(GL_TEXTURE_2D, pname, param);
-	}
-
 	// Framebuffer entry point
 	GLenum fb_target = 0;
 	void SetFramebufferTarget(GLenum target) {
@@ -206,43 +187,43 @@ namespace Emulate_DSA {
 	}
 
 	void APIENTRY CreateFramebuffers(GLsizei n, GLuint *framebuffers) {
-		glGenFramebuffers(n, framebuffers);
+		gl_GenFramebuffers(n, framebuffers);
 	}
 
 	void APIENTRY ClearNamedFramebufferfv(GLuint framebuffer, GLenum buffer, GLint drawbuffer, const GLfloat *value) {
-		glBindFramebuffer(fb_target, framebuffer);
-		glClearBufferfv(buffer, drawbuffer, value);
+		gl_BindFramebuffer(fb_target, framebuffer);
+		gl_ClearBufferfv(buffer, drawbuffer, value);
 	}
 
 	void APIENTRY ClearNamedFramebufferiv(GLuint framebuffer, GLenum buffer, GLint drawbuffer, const GLint *value) {
-		glBindFramebuffer(fb_target, framebuffer);
-		glClearBufferiv(buffer, drawbuffer, value);
+		gl_BindFramebuffer(fb_target, framebuffer);
+		gl_ClearBufferiv(buffer, drawbuffer, value);
 	}
 
 	void APIENTRY ClearNamedFramebufferuiv(GLuint framebuffer, GLenum buffer, GLint drawbuffer, const GLuint *value) {
-		glBindFramebuffer(fb_target, framebuffer);
-		glClearBufferuiv(buffer, drawbuffer, value);
+		gl_BindFramebuffer(fb_target, framebuffer);
+		gl_ClearBufferuiv(buffer, drawbuffer, value);
 	}
 
 	void APIENTRY NamedFramebufferTexture(GLuint framebuffer, GLenum attachment, GLuint texture, GLint level) {
-		glBindFramebuffer(fb_target, framebuffer);
-		glFramebufferTexture2D(fb_target, attachment, GL_TEXTURE_2D, texture, level);
+		gl_BindFramebuffer(fb_target, framebuffer);
+		gl_FramebufferTexture2D(fb_target, attachment, GL_TEXTURE_2D, texture, level);
 	}
 
 	void APIENTRY NamedFramebufferDrawBuffers(GLuint framebuffer, GLsizei n, const GLenum *bufs) {
-		glBindFramebuffer(fb_target, framebuffer);
-		glDrawBuffers(n, bufs);
+		gl_BindFramebuffer(fb_target, framebuffer);
+		gl_DrawBuffers(n, bufs);
 	}
 
 	void APIENTRY NamedFramebufferReadBuffer(GLuint framebuffer, GLenum src) {
-		glBindFramebuffer(fb_target, framebuffer);
+		gl_BindFramebuffer(fb_target, framebuffer);
 		glReadBuffer(src);
-		glBindFramebuffer(fb_target, 0);
+		gl_BindFramebuffer(fb_target, 0);
 	}
 
 	GLenum APIENTRY CheckNamedFramebufferStatus(GLuint framebuffer, GLenum target) {
-		glBindFramebuffer(fb_target, framebuffer);
-		return glCheckFramebufferStatus(fb_target);
+		gl_BindFramebuffer(fb_target, framebuffer);
+		return gl_CheckFramebufferStatus(fb_target);
 	}
 
 	// Buffer entry point
@@ -252,84 +233,83 @@ namespace Emulate_DSA {
 	}
 
 	void APIENTRY CreateBuffers(GLsizei n, GLuint *buffers) {
-		glGenBuffers(1, buffers);
+		gl_GenBuffers(1, buffers);
 	}
 
-	void APIENTRY NamedBufferStorage(GLuint buffer, buffer_proc_t size, const void *data, GLbitfield flags) {
-		glBindBuffer(buffer_target, buffer);
-		glBufferStorage(buffer_target, size, data, flags);
+	void APIENTRY NamedBufferStorage(GLuint buffer, GLsizei size, const void *data, GLbitfield flags) {
+		gl_BindBuffer(buffer_target, buffer);
+		gl_BufferStorage(buffer_target, size, data, flags);
 	}
 
-	void APIENTRY NamedBufferData(GLuint buffer, buffer_proc_t size, const void *data, GLenum usage) {
-		glBindBuffer(buffer_target, buffer);
-		glBufferData(buffer_target, size, data, usage);
+	void APIENTRY NamedBufferData(GLuint buffer, GLsizei size, const void *data, GLenum usage) {
+		gl_BindBuffer(buffer_target, buffer);
+		gl_BufferData(buffer_target, size, data, usage);
 	}
 
-	void APIENTRY NamedBufferSubData(GLuint buffer, GLintptr offset, buffer_proc_t size, const void *data) {
-		glBindBuffer(buffer_target, buffer);
-		glBufferSubData(buffer_target, offset, size, data);
+	void APIENTRY NamedBufferSubData(GLuint buffer, GLintptr offset, GLsizei size, const void *data) {
+		gl_BindBuffer(buffer_target, buffer);
+		gl_BufferSubData(buffer_target, offset, size, data);
 	}
 
 	void *APIENTRY MapNamedBuffer(GLuint buffer, GLenum access) {
-		glBindBuffer(buffer_target, buffer);
-		return glMapBuffer(buffer_target, access);
+		gl_BindBuffer(buffer_target, buffer);
+		return gl_MapBuffer(buffer_target, access);
 	}
 
-	void *APIENTRY MapNamedBufferRange(GLuint buffer, GLintptr offset, buffer_proc_t length, GLbitfield access) {
-		glBindBuffer(buffer_target, buffer);
-		return glMapBufferRange(buffer_target, offset, length, access);
+	void *APIENTRY MapNamedBufferRange(GLuint buffer, GLintptr offset, GLsizei length, GLbitfield access) {
+		gl_BindBuffer(buffer_target, buffer);
+		return gl_MapBufferRange(buffer_target, offset, length, access);
 	}
 
 	GLboolean APIENTRY UnmapNamedBuffer(GLuint buffer) {
-		glBindBuffer(buffer_target, buffer);
-		return glUnmapBuffer(buffer_target);
+		gl_BindBuffer(buffer_target, buffer);
+		return gl_UnmapBuffer(buffer_target);
 	}
 
-	void APIENTRY FlushMappedNamedBufferRange(GLuint buffer, GLintptr offset, buffer_proc_t length) {
-		glBindBuffer(buffer_target, buffer);
-		glFlushMappedBufferRange(buffer_target, offset, length);
+	void APIENTRY FlushMappedNamedBufferRange(GLuint buffer, GLintptr offset, GLsizei length) {
+		gl_BindBuffer(buffer_target, buffer);
+		gl_FlushMappedBufferRange(buffer_target, offset, length);
 	}
 
 	// Misc entry point
 	// (only purpose is to have a consistent API otherwise it is useless)
 	void APIENTRY CreateProgramPipelines(GLsizei n, GLuint *pipelines) {
-		glGenProgramPipelines(n, pipelines);
+		gl_GenProgramPipelines(n, pipelines);
 	}
 
 	void APIENTRY CreateSamplers(GLsizei n, GLuint *samplers) {
-		glGenSamplers(n, samplers);
+		gl_GenSamplers(n, samplers);
 	}
 
 	// Replace function pointer to emulate DSA behavior
 	void Init() {
-		fprintf(stderr, "DSA is not supported. Replacing the GL function pointer to emulate it\n");
-		glBindTextureUnit             = BindTextureUnit;
-		glCreateTextures              = CreateTexture;
-		glTextureStorage2D            = TextureStorage;
-		glTextureSubImage2D           = TextureSubImage;
-		glCopyTextureSubImage2D       = CopyTextureSubImage;
-		glGetTextureImage             = GetTexureImage;
-		glTextureParameteri           = TextureParameteri;
+		fprintf(stderr, "DSA is not supported. Replace GL function pointer to emulate it\n");
+		gl_BindTextureUnit             = BindTextureUnit;
+		gl_CreateTextures              = CreateTexture;
+		gl_TextureStorage2D            = TextureStorage;
+		gl_TextureSubImage2D           = TextureSubImage;
+		gl_CopyTextureSubImage2D       = CopyTextureSubImage;
+		gl_GetTextureImage             = GetTexureImage;
 
-		glCreateFramebuffers          = CreateFramebuffers;
-		glClearNamedFramebufferfv     = ClearNamedFramebufferfv;
-		glClearNamedFramebufferiv     = ClearNamedFramebufferiv;
-		glClearNamedFramebufferuiv    = ClearNamedFramebufferuiv;
-		glNamedFramebufferDrawBuffers = NamedFramebufferDrawBuffers;
-		glNamedFramebufferReadBuffer  = NamedFramebufferReadBuffer;
-		glCheckNamedFramebufferStatus = CheckNamedFramebufferStatus;
+		gl_CreateFramebuffers          = CreateFramebuffers;
+		gl_ClearNamedFramebufferfv     = ClearNamedFramebufferfv;
+		gl_ClearNamedFramebufferiv     = ClearNamedFramebufferiv;
+		gl_ClearNamedFramebufferuiv    = ClearNamedFramebufferuiv;
+		gl_NamedFramebufferDrawBuffers = NamedFramebufferDrawBuffers;
+		gl_NamedFramebufferReadBuffer  = NamedFramebufferReadBuffer;
+		gl_CheckNamedFramebufferStatus = CheckNamedFramebufferStatus;
 
-		glCreateBuffers               = CreateBuffers;
-		glNamedBufferStorage          = NamedBufferStorage;
-		glNamedBufferData             = NamedBufferData;
-		glNamedBufferSubData          = NamedBufferSubData;
-		glMapNamedBuffer              = MapNamedBuffer;
-		glMapNamedBufferRange         = MapNamedBufferRange;
-		glUnmapNamedBuffer            = UnmapNamedBuffer;
-		glFlushMappedNamedBufferRange = FlushMappedNamedBufferRange;
+		gl_CreateBuffers               = CreateBuffers;
+		gl_NamedBufferStorage          = NamedBufferStorage;
+		gl_NamedBufferData             = NamedBufferData;
+		gl_NamedBufferSubData          = NamedBufferSubData;
+		gl_MapNamedBuffer              = MapNamedBuffer;
+		gl_MapNamedBufferRange         = MapNamedBufferRange;
+		gl_UnmapNamedBuffer            = UnmapNamedBuffer;
+		gl_FlushMappedNamedBufferRange = FlushMappedNamedBufferRange;
 
-		glCreateProgramPipelines      = CreateProgramPipelines;
-		glCreateSamplers              = CreateSamplers;
+		gl_CreateProgramPipelines      = CreateProgramPipelines;
+		gl_CreateSamplers              = CreateSamplers;
 	}
 }
 
@@ -341,22 +321,26 @@ namespace GLLoader {
 	bool intel_buggy_driver    = false;
 	bool in_replayer           = false;
 
-
+	// Optional
+	bool found_GL_ARB_separate_shader_objects = false; // Issue with Mesa and Catalyst...
 	bool found_geometry_shader = true; // we require GL3.3 so geometry must be supported by default
 	bool found_GL_EXT_texture_filter_anisotropic = false;
-	bool found_GL_ARB_clear_texture = false; // Miss AMD Mesa (otherwise seems SW)
-	// DX10 GPU limited driver (SW)
-	bool found_GL_ARB_copy_image = false;
-	bool found_GL_ARB_texture_barrier = false;
+	bool found_GL_ARB_clear_texture = false; // Don't know if GL3 GPU can support it
+
+	// Note: except Apple, all drivers support explicit uniform location
+	bool found_GL_ARB_explicit_uniform_location = false; // need by subroutine and bindless texture
+	// GL4 hardware
+	bool found_GL_ARB_buffer_storage = false;
+	bool found_GL_ARB_copy_image = false; // Not sure actually maybe GL3 GPU can do it
+	bool found_GL_ARB_gpu_shader5 = false;
+	bool found_GL_ARB_shader_image_load_store = false; // GLES3.1
+	bool found_GL_ARB_shader_subroutine = false;
+	bool found_GL_ARB_bindless_texture = false; // GL5 GPU?
+	bool found_GL_ARB_texture_barrier = false; // Well maybe supported by older hardware I don't know
+
+	// GL4.5 for the future (dx10/dx11 compatibility)
 	bool found_GL_ARB_clip_control = false;
 	bool found_GL_ARB_direct_state_access = false;
-	bool found_GL_ARB_separate_shader_objects = false; // Issue with Catalyst...
-	bool found_GL_ARB_buffer_storage = false;
-	// DX11 GPU
-	bool found_GL_ARB_draw_buffers_blend = false; // Not supported on AMD R600 (80 nm class chip, HD2900). Nvidia requires FERMI. Intel SB
-	bool found_GL_ARB_gpu_shader5 = false; // Require IvyBridge
-	bool found_GL_ARB_shader_image_load_store = false; // Intel IB. Nvidia/AMD miss Mesa implementation.
-	bool found_GL_ARB_viewport_array = false; // Intel IB. AMD/NVIDIA DX10
 
 	// Mandatory
 	bool found_GL_ARB_texture_storage = false;
@@ -372,9 +356,9 @@ namespace GLLoader {
 		}
 
 		if (!found) {
-			fprintf(stdout, "INFO: %s is NOT SUPPORTED\n", name.c_str());
+			fprintf(stderr, "INFO: %s is NOT SUPPORTED\n", name.c_str());
 		} else {
-			fprintf(stdout, "INFO: %s is available\n", name.c_str());
+			fprintf(stderr, "INFO: %s is available\n", name.c_str());
 		}
 
 		std::string opt("override_");
@@ -388,46 +372,47 @@ namespace GLLoader {
 		return true;
 	}
 
-    bool check_gl_version(int major, int minor) {
+    bool check_gl_version(uint32 major, uint32 minor) {
 
 		const GLubyte* s = glGetString(GL_VERSION);
 		if (s == NULL) {
 			fprintf(stderr, "Error: GLLoader failed to get GL version\n");
 			return false;
 		}
-		GLuint v = 1;
-		while (s[v] != '\0' && s[v-1] != ' ') v++;
 
 		const char* vendor = (const char*)glGetString(GL_VENDOR);
-		fprintf(stdout, "OpenGL information. GPU: %s. Vendor: %s. Driver: %s\n", glGetString(GL_RENDERER), vendor, &s[v]);
+		fprintf(stderr, "Supported Opengl version: %s on GPU: %s. Vendor: %s\n", s, glGetString(GL_RENDERER), vendor);
+		fprintf(stderr, "Note: the maximal version supported by GSdx is 3.3 (even if you driver support more)!\n");
 
-		// Name changed but driver is still bad!
+		// Name change but driver is still bad!
 		if (strstr(vendor, "ATI") || strstr(vendor, "Advanced Micro Devices"))
 			fglrx_buggy_driver = true;
 		if (strstr(vendor, "NVIDIA Corporation"))
 			nvidia_buggy_driver = true;
 		if (strstr(vendor, "Intel"))
 			intel_buggy_driver = true;
-		if (strstr(vendor, "X.Org") || strstr(vendor, "nouveau")) // Note: it might actually catch nouveau too, but bugs are likely to be the same anyway
+		if (strstr(vendor, "X.Org")) // Note: it might actually catch nouveau too, but bug are likely to be the same anyway
 			mesa_amd_buggy_driver = true;
 		if (strstr(vendor, "VMware")) // Assume worst case because I don't know the real status
 			mesa_amd_buggy_driver = intel_buggy_driver = true;
 
-		if (mesa_amd_buggy_driver) {
+		GLuint dot = 0;
+		while (s[dot] != '\0' && s[dot] != '.') dot++;
+		if (dot == 0) return false;
+
+		GLuint major_gl = s[dot-1]-'0';
+		GLuint minor_gl = s[dot+1]-'0';
+
+		if (mesa_amd_buggy_driver || intel_buggy_driver) {
 			fprintf(stderr, "Buggy driver detected. Geometry shaders will be disabled\n");
 			found_geometry_shader = false;
 		}
 		if (theApp.GetConfig("override_geometry_shader", -1) != -1) {
 			found_geometry_shader = !!theApp.GetConfig("override_geometry_shader", -1);
-			fprintf(stderr, "Overriding geometry shaders detection\n");
+			fprintf(stderr, "Override geometry shaders detection\n");
 		}
-
-		GLint major_gl = 0;
-		GLint minor_gl = 0;
-		glGetIntegerv(GL_MAJOR_VERSION, &major_gl);
-		glGetIntegerv(GL_MINOR_VERSION, &minor_gl);
 		if ( (major_gl < major) || ( major_gl == major && minor_gl < minor ) ) {
-			fprintf(stderr, "OpenGL %d.%d is not supported. Only OpenGL %d.%d\n was found", major, minor, major_gl, minor_gl);
+			fprintf(stderr, "OPENGL %d.%d is not supported\n", major, minor);
 			return false;
 		}
 
@@ -438,34 +423,44 @@ namespace GLLoader {
 		int max_ext = 0;
 		glGetIntegerv(GL_NUM_EXTENSIONS, &max_ext);
 
-		if (glGetStringi && max_ext) {
+		if (gl_GetStringi && max_ext) {
 			for (GLint i = 0; i < max_ext; i++) {
-				string ext((const char*)glGetStringi(GL_EXTENSIONS, i));
+				string ext((const char*)gl_GetStringi(GL_EXTENSIONS, i));
 				// Bonus
 				if (ext.compare("GL_EXT_texture_filter_anisotropic") == 0) found_GL_EXT_texture_filter_anisotropic = true;
 				// GL4.0
 				if (ext.compare("GL_ARB_gpu_shader5") == 0) found_GL_ARB_gpu_shader5 = true;
-				if (ext.compare("GL_ARB_draw_buffers_blend") == 0) found_GL_ARB_draw_buffers_blend = true;
 				// GL4.1
-				if (ext.compare("GL_ARB_viewport_array") == 0) found_GL_ARB_viewport_array = true;
 				if (ext.compare("GL_ARB_separate_shader_objects") == 0) {
 					if (!fglrx_buggy_driver && !mesa_amd_buggy_driver && !intel_buggy_driver) found_GL_ARB_separate_shader_objects = true;
-					else fprintf(stderr, "Buggy driver detected, GL_ARB_separate_shader_objects will be disabled\n"
-#ifdef __linux__
-							"Note the extension will be fixed on Mesa 11.2 or 11.1.2.\n"
-#endif
-							"AMD proprietary driver => https://community.amd.com/thread/194895\n"
-							"If you want to try it, you can set the variable override_GL_ARB_separate_shader_objects to 1 in the ini file\n");
+					else fprintf(stderr, "Buggy driver detected, GL_ARB_separate_shader_objects will be disabled\n");
 				}
+#if 0
+				// Erratum: on nvidia implementation, gain is very nice : 42.5 fps => 46.5 fps
+				//
+				// Strangely it doesn't provide the speed boost as expected.
+				// Note: only atst/colclip was replaced with subroutine for the moment. It replace 2000 program switch on
+				// colin mcrae 3 by 2100 uniform, but code is slower!
+				//
+				// Current hypothesis: the validation of useprogram is done in the "driver thread" whereas the extra function calls
+				// are done on the overloaded main threads.
+				// Apitrace profiling shows faster GPU draw times
+
+				if (ext.compare("GL_ARB_shader_subroutine") == 0) found_GL_ARB_shader_subroutine = true;
+#endif
 				// GL4.2
 				if (ext.compare("GL_ARB_shading_language_420pack") == 0) found_GL_ARB_shading_language_420pack = true;
 				if (ext.compare("GL_ARB_texture_storage") == 0) found_GL_ARB_texture_storage = true;
+				// (I'm not sure AMD supports correctly GL_ARB_shader_image_load_store
 				if (ext.compare("GL_ARB_shader_image_load_store") == 0) found_GL_ARB_shader_image_load_store = true;
 				// GL4.3
 				if (ext.compare("GL_ARB_copy_image") == 0) found_GL_ARB_copy_image = true;
+				if (ext.compare("GL_ARB_explicit_uniform_location") == 0) found_GL_ARB_explicit_uniform_location = true;
 				// GL4.4
 				if (ext.compare("GL_ARB_buffer_storage") == 0) found_GL_ARB_buffer_storage = true;
 				if (ext.compare("GL_ARB_clear_texture") == 0) found_GL_ARB_clear_texture = true;
+				// FIXME: I have a crash when I hit pause (debug build)
+				//if (ext.compare("GL_ARB_bindless_texture") == 0) found_GL_ARB_bindless_texture = true;
 				// GL4.5
 				if (ext.compare("GL_ARB_direct_state_access") == 0) found_GL_ARB_direct_state_access = true;
 				if (ext.compare("GL_ARB_clip_control") == 0) found_GL_ARB_clip_control = true;
@@ -476,23 +471,25 @@ namespace GLLoader {
 		}
 
 		bool status = true;
+		fprintf(stderr, "\n");
 
 		// Bonus
 		status &= status_and_override(found_GL_EXT_texture_filter_anisotropic, "GL_EXT_texture_filter_anisotropic");
 		// GL4.0
 		status &= status_and_override(found_GL_ARB_gpu_shader5, "GL_ARB_gpu_shader5");
-		status &= status_and_override(found_GL_ARB_draw_buffers_blend, "GL_ARB_draw_buffers_blend");
 		// GL4.1
-		status &= status_and_override(found_GL_ARB_viewport_array, "GL_ARB_viewport_array");
 		status &= status_and_override(found_GL_ARB_separate_shader_objects, "GL_ARB_separate_shader_objects");
+		status &= status_and_override(found_GL_ARB_shader_subroutine, "GL_ARB_shader_subroutine");
 		// GL4.2
 		status &= status_and_override(found_GL_ARB_shader_image_load_store, "GL_ARB_shader_image_load_store");
 		status &= status_and_override(found_GL_ARB_shading_language_420pack, "GL_ARB_shading_language_420pack", true);
 		status &= status_and_override(found_GL_ARB_texture_storage, "GL_ARB_texture_storage", true);
 		// GL4.3
+		status &= status_and_override(found_GL_ARB_explicit_uniform_location, "GL_ARB_explicit_uniform_location");
 		status &= status_and_override(found_GL_ARB_copy_image, "GL_ARB_copy_image");
 		// GL4.4
 		status &= status_and_override(found_GL_ARB_buffer_storage,"GL_ARB_buffer_storage");
+		status &= status_and_override(found_GL_ARB_bindless_texture,"GL_ARB_bindless_texture");
 		status &= status_and_override(found_GL_ARB_clear_texture,"GL_ARB_clear_texture");
 		// GL4.5
 		status &= status_and_override(found_GL_ARB_clip_control, "GL_ARB_clip_control");
@@ -502,30 +499,19 @@ namespace GLLoader {
 		if (!found_GL_ARB_direct_state_access) {
 			Emulate_DSA::Init();
 		}
-		if (glBindTextureUnit == NULL) {
+		if (gl_BindTextureUnit == NULL) {
 			fprintf(stderr, "FATAL ERROR !!!! Failed to setup DSA function pointer!!!\n");
 			status = false;
 		}
 
 		if (!found_GL_ARB_texture_barrier) {
-			fprintf(stderr, "Error GL_ARB_texture_barrier is not supported by your driver. You can't emulate correctly the GS blending unit! Sorry!\n");
-			theApp.SetConfig("accurate_blending_unit", 0);
-			theApp.SetConfig("accurate_date", 0);
-		}
-
-#ifdef _WIN32
-		if (status) {
-			if (intel_buggy_driver) {
-				fprintf(stderr, "OpenGL renderer isn't compatible with SandyBridge/IvyBridge GPU due to issues. Sorry.\n"
-						"Tip:Try it on Linux");
-			}
-			if (fglrx_buggy_driver) {
-				fprintf(stderr, "OpenGL renderer is slow on AMD GPU due to inefficient driver. Sorry.");
+			if (theApp.GetConfig("accurate_blend", 0)) {
+				fprintf(stderr, "Error GL_ARB_texture_barrier is not supported by your driver so you can't enable accurate_blend! Sorry.\n");
+				theApp.SetConfig("accurate_blend", 0);
 			}
 		}
-#endif
 
-		fprintf(stdout, "\n");
+		fprintf(stderr, "\n");
 
 		return status;
 	}

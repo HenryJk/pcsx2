@@ -28,13 +28,12 @@ class GSDumpFile {
 	protected:
 	FILE*		m_fp;
 
+	GSDumpFile(char* filename);
+	virtual ~GSDumpFile();
 
 	public:
 	virtual bool IsEof() = 0;
 	virtual void Read(void* ptr, size_t size) = 0;
-
-	GSDumpFile(char* filename);
-	virtual ~GSDumpFile();
 };
 
 #ifdef LZMA_SUPPORTED
@@ -48,6 +47,7 @@ class GSDumpLzma : public GSDumpFile {
 
 	size_t		m_avail;
 	size_t		m_start;
+	bool  		m_eof;
 
 	void Decompress();
 
@@ -63,12 +63,15 @@ class GSDumpLzma : public GSDumpFile {
 
 class GSDumpRaw : public GSDumpFile {
 
+	lzma_stream m_strm;
+
 	size_t		m_buff_size;
 	uint8_t*	m_area;
 	uint8_t*	m_inbuf;
 
 	size_t		m_avail;
 	size_t		m_start;
+	bool  		m_eof;
 
 	void Decompress();
 

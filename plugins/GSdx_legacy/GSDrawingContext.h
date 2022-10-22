@@ -125,8 +125,6 @@ public:
 		return ZBUF.ZMSK == 0 && TEST.ZTE != 0; // ZTE == 0 is bug on the real hardware, write is blocked then
 	}
 
-	GIFRegTEX0 GetSizeFixedTEX0(const GSVector4& st, bool linear, bool mipmap);
-
 	void Dump(const std::string& filename)
 	{
 		// Append on purpose so env + context are merged into a single file
@@ -137,22 +135,20 @@ public:
 				"\tX:%d\n"
 				"\tY:%d\n\n"
 				, XYOFFSET.OFX, XYOFFSET.OFY);
-
 		fprintf(fp, "TEX0\n"
-				"\tTBP0:0x%x\n"
+				"\tTBP0:%d\n"
 				"\tTBW:%d\n"
 				"\tPSM:0x%x\n"
 				"\tTW:%d\n"
 				"\tTCC:%d\n"
 				"\tTFX:%d\n"
-				"\tCBP:0x%x\n"
+				"\tCBP:%d\n"
 				"\tCPSM:0x%x\n"
 				"\tCSM:%d\n"
 				"\tCSA:%d\n"
 				"\tCLD:%d\n"
 				"\tTH:%lld\n\n"
 				, TEX0.TBP0, TEX0.TBW, TEX0.PSM, TEX0.TW, TEX0.TCC, TEX0.TFX, TEX0.CBP, TEX0.CPSM, TEX0.CSM, TEX0.CSA, TEX0.CLD, TEX0.TH);
-
 		fprintf(fp, "TEX1\n"
 				"\tLCM:%d\n"
 				"\tMXL:%d\n"
@@ -162,16 +158,14 @@ public:
 				"\tL:%d\n"
 				"\tK:%d\n\n"
 				, TEX1.LCM, TEX1.MXL, TEX1.MMAG, TEX1.MMIN, TEX1.MTBA, TEX1.L, TEX1.K);
-
 		fprintf(fp, "TEX2\n"
 				"\tPSM:0x%x\n"
-				"\tCBP:0x%x\n"
+				"\tCBP:%d\n"
 				"\tCPSM:0x%x\n"
 				"\tCSM:%d\n"
 				"\tCSA:%d\n"
 				"\tCLD:%d\n\n"
 				, TEX2.PSM, TEX2.CBP, TEX2.CPSM, TEX2.CSM, TEX2.CSA, TEX2.CLD);
-
 		fprintf(fp, "CLAMP\n"
 				"\tWMS:%d\n"
 				"\tWMT:%d\n"
@@ -180,7 +174,6 @@ public:
 				"\tMAXV:%d\n"
 				"\tMINV:%lld\n\n"
 				, CLAMP.WMS, CLAMP.WMT, CLAMP.MINU, CLAMP.MAXU, CLAMP.MAXV, CLAMP.MINV);
-
 		// TODO mimmap? (yes I'm lazy)
 		fprintf(fp, "SCISSOR\n"
 				"\tX0:%d\n"
@@ -188,18 +181,13 @@ public:
 				"\tY0:%d\n"
 				"\tY1:%d\n\n"
 				, SCISSOR.SCAX0, SCISSOR.SCAX1, SCISSOR.SCAY0, SCISSOR.SCAY1);
-
 		fprintf(fp, "ALPHA\n"
 				"\tA:%d\n"
 				"\tB:%d\n"
 				"\tC:%d\n"
 				"\tD:%d\n"
-				"\tFIX:%d\n"
+				"\tFIX:%d\n\n"
 				, ALPHA.A, ALPHA.B, ALPHA.C, ALPHA.D, ALPHA.FIX);
-		const char *col[3] = {"Cs", "Cd", "0"};
-		const char *alpha[3] = {"As", "Ad", "Af"};
-		fprintf(fp, "\t=> (%s - %s) * %s + %s\n\n", col[ALPHA.A], col[ALPHA.B], alpha[ALPHA.C], col[ALPHA.D]);
-
 		fprintf(fp, "TEST\n"
 				"\tATE:%d\n"
 				"\tATST:%d\n"
@@ -210,23 +198,20 @@ public:
 				"\tZTE:%d\n"
 				"\tZTST:%d\n\n"
 				, TEST.ATE, TEST.ATST, TEST.AREF, TEST.AFAIL, TEST.DATE, TEST.DATM, TEST.ZTE, TEST.ZTST);
-
 		fprintf(fp, "FBA\n"
 				"\tFBA:%d\n\n"
 				, FBA.FBA);
-
 		fprintf(fp, "FRAME\n"
-				"\tFBP (*32):0x%x\n"
+				"\tFBP:%d\n"
 				"\tFBW:%d\n"
 				"\tPSM:0x%x\n"
-				"\tFBMSK:0x%x\n\n"
-				, FRAME.FBP*32, FRAME.FBW, FRAME.PSM, FRAME.FBMSK);
-
+				"\tFBMSK:%d\n\n"
+				, FRAME.FBP, FRAME.FBW, FRAME.PSM, FRAME.FBMSK);
 		fprintf(fp, "ZBUF\n"
-				"\tZBP (*32):0x%x\n"
+				"\tZBP:%d\n"
 				"\tPSM:0x%x\n"
 				"\tZMSK:%d\n\n"
-				, ZBUF.ZBP*32, ZBUF.PSM, ZBUF.ZMSK);
+				, ZBUF.ZBP, ZBUF.PSM, ZBUF.ZMSK);
 
 		fclose(fp);
 	}

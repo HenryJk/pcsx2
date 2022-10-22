@@ -75,7 +75,7 @@ void GSDevice9::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 		str[3] = format("%d", sel.logz);
 		str[4] = format("%d", sel.rtcopy);
 
-		D3D_SHADER_MACRO macro[] =
+		D3DXMACRO macro[] =
 		{
 			{"VS_BPPZ", str[0].c_str()},
 			{"VS_TME", str[1].c_str()},
@@ -96,9 +96,7 @@ void GSDevice9::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 
 		GSVertexShader9 vs;
 
-		vector<unsigned char> shader;
-		theApp.LoadResource(IDR_TFX_FX, shader);
-		CompileShader((const char *)shader.data(), shader.size(), "tfx.fx", "vs_main", macro, &vs.vs, layout, countof(layout), &vs.il);
+		CompileShader(IDR_TFX_FX, "vs_main", macro, &vs.vs, layout, countof(layout), &vs.il);
 
 		m_vs[sel] = vs;
 
@@ -157,7 +155,7 @@ void GSDevice9::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSel
 		str[15] = format("%d", sel.tcoffsethack);
 		str[16] = format("%d", sel.point_sampler);
 
-		D3D_SHADER_MACRO macro[] =
+		D3DXMACRO macro[] =
 		{
 			{"PS_FST", str[0].c_str()},
 			{"PS_WMS", str[1].c_str()},
@@ -181,9 +179,7 @@ void GSDevice9::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSel
 
 		CComPtr<IDirect3DPixelShader9> ps;
 
-		vector<unsigned char> shader;
-		theApp.LoadResource(IDR_TFX_FX, shader);
-		CompileShader((const char *)shader.data(), shader.size(), "tfx.fx", "ps_main", macro, &ps);
+		CompileShader(IDR_TFX_FX, "ps_main", macro, &ps);
 
 		m_ps[sel] = ps;
 
@@ -213,8 +209,8 @@ void GSDevice9::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSel
 
 			memset(ss, 0, sizeof(*ss));
 
-			ss->Anisotropic[0] = theApp.GetConfig("MaxAnisotropy", 0) && !theApp.GetConfig("paltex", 0) ? D3DTEXF_ANISOTROPIC : D3DTEXF_LINEAR;
-			ss->Anisotropic[1] = theApp.GetConfig("MaxAnisotropy", 0) && !theApp.GetConfig("paltex", 0) ? D3DTEXF_ANISOTROPIC : D3DTEXF_POINT;
+			ss->Anisotropic[0] = !!theApp.GetConfig("AnisotropicFiltering", 0) && !theApp.GetConfig("paltex", 0) ? D3DTEXF_ANISOTROPIC : D3DTEXF_LINEAR;
+			ss->Anisotropic[1] = !!theApp.GetConfig("AnisotropicFiltering", 0) && !theApp.GetConfig("paltex", 0) ? D3DTEXF_ANISOTROPIC : D3DTEXF_POINT;
 			ss->FilterMin[0] = ssel.ltf ? ss->Anisotropic[0] : D3DTEXF_POINT;
 			ss->FilterMag[0] = ssel.ltf ? ss->Anisotropic[0] : D3DTEXF_POINT;
 			ss->FilterMip[0] = ssel.ltf ? ss->Anisotropic[0] : D3DTEXF_POINT;

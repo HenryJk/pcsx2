@@ -27,7 +27,7 @@
 
 #include "config.h"
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 #include "targetver.h"
 
@@ -37,13 +37,17 @@
 #include <commctrl.h>
 #include <commdlg.h>
 #include <shellapi.h>
-#include <d3dcompiler.h>
 #include <d3d11.h>
+#include <d3dx11.h>
 #include <d3d9.h>
+#include <d3dx9.h>
 #include <comutil.h>
-#include <atlcomcli.h>
+#include "../../common/include/comptr.h"
+
 
 #define D3DCOLORWRITEENABLE_RGBA (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA)
+#define D3D11_SHADER_MACRO D3D10_SHADER_MACRO
+#define ID3D11Blob ID3D10Blob
 
 #endif
 
@@ -54,6 +58,12 @@
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
+#endif
+
+// Require at least Visual Studio 2012
+#if defined(__linux__) || (defined(_MSC_VER) && (_MSC_VER >= 1700))
+#define _CX11_
+#define ENABLE_BOOST // queue is from boost but it doesn't require a full boost install
 #endif
 
 // put these into vc9/common7/ide/usertype.dat to have them highlighted
@@ -71,11 +81,6 @@ typedef uint64 uptr;
 #else
 typedef uint32 uptr;
 #endif
-
-
-// xbyak compatibilities
-typedef int64 sint64;
-#define MIE_INTEGER_TYPE_DEFINED
 
 // stdc
 
@@ -97,35 +102,31 @@ typedef int64 sint64;
 #include <set>
 #include <queue>
 #include <algorithm>
+#ifdef _CX11_
 #include <thread>
 #include <atomic>
+#endif
+#if defined(__linux__) || defined(_CX11_)
 #include <mutex>
 #include <condition_variable>
+#endif
 
 using namespace std;
 
 #include <memory>
 
-#include <zlib.h>
-
-#if _MSC_VER >= 1800 || !defined(_WIN32)
-#include <unordered_map>
-#include <unordered_set>
-#define hash_map unordered_map
-#define hash_set unordered_set
-#else
-#include <hash_map>
-#include <hash_set>
-using namespace stdext;
-#endif
-
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 	// Note use GL/glcorearb.h on the future
 	#include <GL/gl.h>
 	#include <GL/glext.h>
 	#include <GL/wglext.h>
 	#include "GLLoader.h"
+
+	#include <hash_map>
+	#include <hash_set>
+
+	using namespace stdext;
 
 	// hashing algoritms at: http://www.cris.com/~Ttwang/tech/inthash.htm
 	// default hash_compare does ldiv and other crazy stuff to reduce speed
@@ -185,12 +186,18 @@ using namespace stdext;
 
 #else
 
+	#define hash_map map
+	#define hash_set set
+
+	//#include <ext/hash_map>
+	//#include <ext/hash_set>
+
 	// Note use GL/glcorearb.h on the future
 	#include <GL/gl.h>
 	#include <GL/glext.h>
 	#include "GLLoader.h"
 
-	#include <sys/stat.h> // mkdir
+	//using namespace __gnu_cxx;
 
 	#define DIRECTORY_SEPARATOR '/'
 
@@ -200,10 +207,8 @@ using namespace stdext;
 
     #define __aligned(t, n) __declspec(align(n)) t
 
-    #define EXPORT_C_(type) extern "C" type __stdcall
+    #define EXPORT_C_(type) extern "C" __declspec(dllexport) type __stdcall
     #define EXPORT_C EXPORT_C_(void)
-
-    #define ALIGN_STACK(n) __aligned(int, n) __dummy;
 
 #else
 
@@ -220,17 +225,7 @@ using namespace stdext;
         // #define __forceinline __inline__ __attribute__((__always_inline__,__gnu_inline__))
         #define __assume(c) do { if (!(c)) __builtin_unreachable(); } while(0)
 
-        // GCC removes the variable as dead code and generates some warnings.
-        // Stack is automatically realigned due to SSE/AVX operations
-        #define ALIGN_STACK(n) (void)0;
-
-    #else
-
-        // TODO Check clang behavior
-        #define ALIGN_STACK(n) __aligned(int, n) __dummy;
-
     #endif
-
 
 #endif
 
@@ -244,6 +239,8 @@ struct aligned_free_first {template<class T> void operator()(T& p) {_aligned_fre
 struct aligned_free_second {template<class T> void operator()(T& p) {_aligned_free(p.second);}};
 
 #define countof(a) (sizeof(a) / sizeof(a[0]))
+
+#define ALIGN_STACK(n) __aligned(int, n) __dummy;
 
 #ifndef RESTRICT
 
@@ -285,7 +282,7 @@ struct aligned_free_second {template<class T> void operator()(T& p) {_aligned_fr
 #endif
 
 // sse
-#if defined(__GNUC__) && !defined(__x86_64__)
+#ifdef __GNUC__
 // Convert gcc see define into GSdx (windows) define
 #if defined(__AVX2__)
 	#define _M_SSE 0x501
@@ -302,10 +299,9 @@ struct aligned_free_second {template<class T> void operator()(T& p) {_aligned_fr
 #elif defined(__SSE__)
 	#define _M_SSE 0x100
 #endif
-
 #endif
 
-#if !defined(_M_SSE) && (!defined(_WIN32) || defined(_M_AMD64) || defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#if !defined(_M_SSE) && (!defined(_WINDOWS) || defined(_M_AMD64) || defined(_M_IX86_FP) && _M_IX86_FP >= 2)
 
 	#define _M_SSE 0x200
 
@@ -363,19 +359,18 @@ struct aligned_free_second {template<class T> void operator()(T& p) {_aligned_fr
 #undef abs
 
 #if !defined(_MSC_VER)
+
 	#if defined(__USE_ISOC11) && !defined(ASAN_WORKAROUND) // not supported yet on gcc 4.9
 
 	#define _aligned_malloc(size, a) aligned_alloc(a, size)
+	static inline void _aligned_free(void* p) { free(p); }
 
-	#else
+	#elif !defined(HAVE_ALIGNED_MALLOC)
 
 	extern void* _aligned_malloc(size_t size, size_t alignment);
+	extern void _aligned_free(void* p);
 
 	#endif
-
-	static inline void _aligned_free(void* p) {
-		free(p);
-	}
 
 	// http://svn.reactos.org/svn/reactos/trunk/reactos/include/crt/mingw32/intrin_x86.h?view=markup
 
@@ -384,6 +379,80 @@ struct aligned_free_second {template<class T> void operator()(T& p) {_aligned_fr
 		__asm__("bsfl %k[Mask], %k[Index]" : [Index] "=r" (*Index) : [Mask] "mr" (Mask));
 		
 		return Mask ? 1 : 0;
+	}
+
+	__forceinline unsigned char _interlockedbittestandreset(volatile long* a, const long b)
+	{
+		unsigned char retval;
+		
+		__asm__("lock; btrl %k[b], %[a]; setb %b[retval]" : [retval] "=q" (retval), [a] "+m" (*a) : [b] "Ir" (b) : "memory");
+		
+		return retval;
+	}
+
+	__forceinline unsigned char _interlockedbittestandset(volatile long* a, const long b)
+	{
+		unsigned char retval;
+		
+		__asm__("lock; btsl %k[b], %[a]; setc %b[retval]" : [retval] "=q" (retval), [a] "+m" (*a) : [b] "Ir" (b) : "memory");
+		
+		return retval;
+	}
+
+	__forceinline long _InterlockedCompareExchange(volatile long* const Destination, const long Exchange, const long Comperand)
+	{
+		long retval = Comperand;
+		
+		__asm__("lock; cmpxchgl %k[Exchange], %[Destination]" : [retval] "+a" (retval) : [Destination] "m" (*Destination), [Exchange] "q" (Exchange): "memory");
+		
+		return retval;
+	}
+
+	__forceinline long _InterlockedExchange(volatile long* const Target, const long Value)
+	{
+		long retval = Value;
+		
+		__asm__("xchgl %[retval], %[Target]" : [retval] "+r" (retval) : [Target] "m" (*Target) : "memory");
+
+		return retval;
+	}
+
+	__forceinline long _InterlockedExchangeAdd(volatile long* const Addend, const long Value)
+	{
+		long retval = Value;
+		
+		__asm__("lock; xaddl %[retval], %[Addend]" : [retval] "+r" (retval) : [Addend] "m" (*Addend) : "memory");
+		
+		return retval;
+	}
+	
+	__forceinline short _InterlockedExchangeAdd16(volatile short* const Addend, const short Value)
+	{
+		short retval = Value;
+		
+		__asm__("lock; xaddw %[retval], %[Addend]" : [retval] "+r" (retval) : [Addend] "m" (*Addend) : "memory");
+		
+		return retval;
+	}
+
+	__forceinline long _InterlockedDecrement(volatile long* const lpAddend)
+	{
+		return _InterlockedExchangeAdd(lpAddend, -1) - 1;
+	}
+	
+	__forceinline long _InterlockedIncrement(volatile long* const lpAddend)
+	{
+		return _InterlockedExchangeAdd(lpAddend, 1) + 1;
+	}
+	
+	__forceinline short _InterlockedDecrement16(volatile short* const lpAddend)
+	{
+		return _InterlockedExchangeAdd16(lpAddend, -1) - 1;
+	}
+	
+	__forceinline short _InterlockedIncrement16(volatile short* const lpAddend)
+	{
+		return _InterlockedExchangeAdd16(lpAddend, 1) + 1;
 	}
 
 	#ifdef __GNUC__
@@ -412,7 +481,7 @@ struct aligned_free_second {template<class T> void operator()(T& p) {_aligned_fr
 extern void* vmalloc(size_t size, bool code);
 extern void vmfree(void* ptr, size_t size);
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 	#ifdef ENABLE_VTUNE
 
@@ -424,21 +493,18 @@ extern void vmfree(void* ptr, size_t size);
 
 #endif
 
-#define GL_INSERT(type, code, sev, ...) \
-	do if (glDebugMessageInsert) glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, type, code, sev, -1, format(__VA_ARGS__).c_str()); while(0);
-
 // Except apple any sane driver support this extension
-#if defined(_DEBUG)
-#define GL_CACHE(...) GL_INSERT(GL_DEBUG_TYPE_OTHER, 0xFEAD, GL_DEBUG_SEVERITY_NOTIFICATION, __VA_ARGS__)
+#if defined(__linux__) && defined(_DEBUG)
+#define GL_CACHE(...) gl_DebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_OTHER, 0xFEAD, GL_DEBUG_SEVERITY_NOTIFICATION, -1, format(__VA_ARGS__).c_str());
 #else
 #define GL_CACHE(...) (0);
 #endif
 
-#if defined(ENABLE_OGL_DEBUG)
-#define GL_PUSH(...)	do if (glPushDebugGroup) glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0xBAD, -1, format(__VA_ARGS__).c_str()); while(0);
-#define GL_POP()        do if (glPopDebugGroup) glPopDebugGroup(); while(0);
-#define GL_INS(...)		GL_INSERT(GL_DEBUG_TYPE_ERROR, 0xDEAD, GL_DEBUG_SEVERITY_MEDIUM, __VA_ARGS__)
-#define GL_PERF(...)	GL_INSERT(GL_DEBUG_TYPE_PERFORMANCE, 0xFEE1, GL_DEBUG_SEVERITY_NOTIFICATION, __VA_ARGS__)
+#if defined(__linux__) && defined(ENABLE_OGL_DEBUG)
+#define GL_PUSH(...)	gl_PushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0xBAD, -1, format(__VA_ARGS__).c_str());
+#define GL_POP()        gl_PopDebugGroup();
+#define GL_INS(...)		gl_DebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0xDEAD, GL_DEBUG_SEVERITY_MEDIUM, -1, format(__VA_ARGS__).c_str());
+#define GL_PERF(...)	gl_DebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_PERFORMANCE, 0xFEE1, GL_DEBUG_SEVERITY_MEDIUM, -1, format(__VA_ARGS__).c_str());
 #else
 #define GL_PUSH(...) (0);
 #define GL_POP()     (0);
@@ -447,7 +513,7 @@ extern void vmfree(void* ptr, size_t size);
 #endif
 
 // Helper path to dump texture
-#ifdef _WIN32
+#ifdef _WINDOWS
 const std::string root_sw("c:\\temp1\\_");
 const std::string root_hw("c:\\temp2\\_");
 #else

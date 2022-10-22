@@ -24,7 +24,6 @@
 #include "GSDevice11.h"
 #include "GSUtil.h"
 #include "resource.h"
-#include <fstream>
 
 GSDevice11::GSDevice11()
 {
@@ -32,9 +31,12 @@ GSDevice11::GSDevice11()
 	memset(&m_vs_cb_cache, 0, sizeof(m_vs_cb_cache));
 	memset(&m_ps_cb_cache, 0, sizeof(m_ps_cb_cache));
 
+	CustomShader_Compiled = false;
 	FXAA_Compiled = false;
 	ExShader_Compiled = false;
-	
+
+	UserHacks_NVIDIAHack = !!theApp.GetConfig("UserHacks_NVIDIAHack", 0) && !!theApp.GetConfig("UserHacks", 0);
+
 	m_state.topology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
 	m_state.bf = -1;
 }
@@ -110,7 +112,6 @@ bool GSDevice11::Create(GSWnd* wnd)
 
 	scd.Windowed = TRUE;
 
-	spritehack = !!theApp.GetConfig("UserHacks", 0) ? theApp.GetConfig("UserHacks_SpriteHack", 0) : 0;
 	// NOTE : D3D11_CREATE_DEVICE_SINGLETHREADED
 	//   This flag is safe as long as the DXGI's internal message pump is disabled or is on the
 	//   same thread as the GS window (which the emulator makes sure of, if it utilizes a
@@ -173,13 +174,11 @@ bool GSDevice11::Create(GSWnd* wnd)
 		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 
-	vector<unsigned char> shader;
-	theApp.LoadResource(IDR_CONVERT_FX, shader);
-	CompileShader((const char *)shader.data(), shader.size(), "convert.fx", nullptr, "vs_main", nullptr, &m_convert.vs, il_convert, countof(il_convert), &m_convert.il);
+	CompileShader(IDR_CONVERT_FX, "vs_main", NULL, &m_convert.vs, il_convert, countof(il_convert), &m_convert.il);
 
 	for(size_t i = 0; i < countof(m_convert.ps); i++)
 	{
-		CompileShader((const char *)shader.data(), shader.size(), "convert.fx", nullptr, format("ps_main%d", i).c_str(), nullptr, &m_convert.ps[i]);
+		CompileShader(IDR_CONVERT_FX, format("ps_main%d", i).c_str(), NULL, &m_convert.ps[i]);
 	}
 
 	memset(&dsd, 0, sizeof(dsd));
@@ -195,6 +194,22 @@ bool GSDevice11::Create(GSWnd* wnd)
 
 	hr = m_dev->CreateBlendState(&bsd, &m_convert.bs);
 
+	//cutie;
+	char szTmp[50]={0};
+	strcpy( szTmp, theApp.GetConfig("color mode", "cutie").c_str());
+	if( !strcmp( szTmp, "original" ) )
+		m_fColorEnginePara = -1.0f;
+	if( !strcmp( szTmp, "advance" ) )
+		m_fColorEnginePara = 1.0f;
+	if( !strcmp( szTmp, "cutie" ) )
+		m_fColorEnginePara = 3.0f;
+	if( !strcmp( szTmp, "monochrome" ) )
+		m_fColorEnginePara = 5.0f;
+	if( !strcmp( szTmp, "super color" ) )
+		m_fColorEnginePara = 9.0f;
+	if( !strcmp( szTmp, "television" ) )
+		m_fColorEnginePara = 10.0f;
+	
 	// merge
 
 	memset(&bd, 0, sizeof(bd));
@@ -205,10 +220,9 @@ bool GSDevice11::Create(GSWnd* wnd)
 
 	hr = m_dev->CreateBuffer(&bd, NULL, &m_merge.cb);
 
-	theApp.LoadResource(IDR_MERGE_FX, shader);
 	for(size_t i = 0; i < countof(m_merge.ps); i++)
 	{
-		CompileShader((const char *)shader.data(), shader.size(), "merge.fx", nullptr, format("ps_main%d", i).c_str(), nullptr, &m_merge.ps[i]);
+		CompileShader(IDR_MERGE_FX, format("ps_main%d", i).c_str(), NULL, &m_merge.ps[i]);
 	}
 
 	memset(&bsd, 0, sizeof(bsd));
@@ -234,10 +248,9 @@ bool GSDevice11::Create(GSWnd* wnd)
 
 	hr = m_dev->CreateBuffer(&bd, NULL, &m_interlace.cb);
 
-	theApp.LoadResource(IDR_INTERLACE_FX, shader);
 	for(size_t i = 0; i < countof(m_interlace.ps); i++)
 	{
-		CompileShader((const char *)shader.data(), shader.size(), "interlace.fx", nullptr, format("ps_main%d", i).c_str(), nullptr, &m_interlace.ps[i]);
+		CompileShader(IDR_INTERLACE_FX, format("ps_main%d", i).c_str(), NULL, &m_interlace.ps[i]);
 	}
 
 	// Shade Boost	
@@ -252,7 +265,7 @@ bool GSDevice11::Create(GSWnd* wnd)
 	str[1] = format("%d", ShadeBoost_Brightness);
 	str[2] = format("%d", ShadeBoost_Contrast);
 
-	D3D_SHADER_MACRO macro[] =
+	D3D11_SHADER_MACRO macro[] =
 	{			
 		{"SB_SATURATION", str[0].c_str()},
 		{"SB_BRIGHTNESS", str[1].c_str()},
@@ -268,8 +281,7 @@ bool GSDevice11::Create(GSWnd* wnd)
 
 	hr = m_dev->CreateBuffer(&bd, NULL, &m_shadeboost.cb);
 
-	theApp.LoadResource(IDR_SHADEBOOST_FX, shader);
-	CompileShader((const char *)shader.data(), shader.size(), "shadeboost.fx", nullptr, "ps_main", macro, &m_shadeboost.ps);
+	CompileShader(IDR_SHADEBOOST_FX, "ps_main", macro, &m_shadeboost.ps);
 
 	// External fx shader
 
@@ -280,6 +292,16 @@ bool GSDevice11::Create(GSWnd* wnd)
 	bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
 	hr = m_dev->CreateBuffer(&bd, NULL, &m_shaderfx.cb);
+
+	// Custom shader
+
+	memset(&bd, 0, sizeof(bd));
+
+	bd.ByteWidth = sizeof(CustomShaderConstantBuffer);
+	bd.Usage = D3D11_USAGE_DEFAULT;
+	bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+	hr = m_dev->CreateBuffer(&bd, NULL, &m_customshader.cb);
 
 	// Fxaa
 
@@ -314,7 +336,7 @@ bool GSDevice11::Create(GSWnd* wnd)
 
 	memset(&sd, 0, sizeof(sd));
 
-	sd.Filter = theApp.GetConfig("MaxAnisotropy", 0) && !theApp.GetConfig("paltex", 0) ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sd.Filter = sd.Filter = !!theApp.GetConfig("AnisotropicFiltering", 0) && !theApp.GetConfig("paltex", 0) ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	sd.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
 	sd.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
 	sd.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -325,7 +347,7 @@ bool GSDevice11::Create(GSWnd* wnd)
 
 	hr = m_dev->CreateSamplerState(&sd, &m_convert.ln);
 
-	sd.Filter = theApp.GetConfig("MaxAnisotropy", 0) && !theApp.GetConfig("paltex", 0) ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_MIN_MAG_MIP_POINT;
+	sd.Filter = !!theApp.GetConfig("AnisotropicFiltering", 0) && !theApp.GetConfig("paltex", 0) ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_MIN_MAG_MIP_POINT;
 
 	hr = m_dev->CreateSamplerState(&sd, &m_convert.pt);
 
@@ -395,6 +417,22 @@ bool GSDevice11::Reset(int w, int h)
 		}
 
 		m_backbuffer = new GSTexture11(backbuffer);
+
+		//cutie;
+		char szTmp[50]={0};
+		strcpy( szTmp, theApp.GetConfig("color mode", "cutie").c_str());
+		if( !strcmp( szTmp, "original" ) )
+			m_fColorEnginePara = -1.0f;
+		if( !strcmp( szTmp, "advance" ) )
+			m_fColorEnginePara = 1.0f;
+		if( !strcmp( szTmp, "cutie" ) )
+			m_fColorEnginePara = 3.0f;
+		if( !strcmp( szTmp, "monochrome" ) )
+			m_fColorEnginePara = 5.0f;
+		if( !strcmp( szTmp, "super color" ) )
+			m_fColorEnginePara = 9.0f;
+		if( !strcmp( szTmp, "television" ) )
+			m_fColorEnginePara = 10.0f;
 	}
 
 	return true;
@@ -451,13 +489,11 @@ void GSDevice11::Dispatch(uint32 x, uint32 y, uint32 z)
 
 void GSDevice11::ClearRenderTarget(GSTexture* t, const GSVector4& c)
 {
-	if (!t) return;
 	m_ctx->ClearRenderTargetView(*(GSTexture11*)t, c.v);
 }
 
 void GSDevice11::ClearRenderTarget(GSTexture* t, uint32 c)
 {
-	if (!t) return;
 	GSVector4 color = GSVector4::rgba32(c) * (1.0f / 255);
 
 	m_ctx->ClearRenderTargetView(*(GSTexture11*)t, color.v);
@@ -465,13 +501,11 @@ void GSDevice11::ClearRenderTarget(GSTexture* t, uint32 c)
 
 void GSDevice11::ClearDepth(GSTexture* t, float c)
 {
-	if (!t) return;
 	m_ctx->ClearDepthStencilView(*(GSTexture11*)t, D3D11_CLEAR_DEPTH, c, 0);
 }
 
 void GSDevice11::ClearStencil(GSTexture* t, uint8 c)
 {
-	if (!t) return;
 	m_ctx->ClearDepthStencilView(*(GSTexture11*)t, D3D11_CLEAR_STENCIL, 0, c);
 }
 
@@ -669,9 +703,19 @@ void GSDevice11::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture*
 		{GSVector4(left, bottom, 0.5f, 1.0f), GSVector2(sRect.x, sRect.w)},
 		{GSVector4(right, bottom, 0.5f, 1.0f), GSVector2(sRect.z, sRect.w)},
 	};
-
-
-
+	
+	/* NVIDIA HACK!!!!
+	  For some reason this function ball's up on drivers after 320.18 causing a weird stretching issue.
+	  The only way around this seems to be adding a small value to the x, y coords for part of the 
+	  vertex data but doing it only on the first vertex of the 4 seems to do it (it doesn't seem to matter)*/
+	if(UserHacks_NVIDIAHack)
+	{
+		//Smallest value i could get away with before it starts stretching again :(
+		vertices[0].p.x += 0.000004f;
+		vertices[0].p.y += 0.000004f;
+	}
+	/*END OF HACK*/
+	
 	IASetVertexBuffer(vertices, sizeof(vertices[0]), countof(vertices));
 	IASetInputLayout(m_convert.il);
 	IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -680,23 +724,9 @@ void GSDevice11::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture*
 
 	VSSetShader(m_convert.vs, NULL);
 
-
 	// gs
-	/* NVIDIA HACK!!!!
-	Not sure why, but having the Geometry shader disabled causes the strange stretching in recent drivers*/
-
-	GSSelector sel;
-	//Don't use shading for stretching, we're just passing through - Note: With Win10 it seems to cause other bugs when shading is off if any of the coords is greater than 0
-	//I really don't know whats going on there, but this seems to resolve it mostly (if not all, not tester a lot of games, only BIOS, FFXII and VP2)
-	//sel.iip = (sRect.y > 0.0f || sRect.w > 0.0f) ? 1 : 0; 
-	//sel.prim = 2; //Triangle Strip
-	//SetupGS(sel);
 
 	GSSetShader(NULL);
-
-	/*END OF HACK*/
-	
-	//
 
 	// ps
 
@@ -743,6 +773,7 @@ void GSDevice11::DoInterlace(GSTexture* sTex, GSTexture* dTex, int shader, bool 
 
 	cb.ZrH = GSVector2(0, 1.0f / s.y);
 	cb.hH = s.y / 2;
+	cb.fSaturation = m_fColorEnginePara;
 
 	m_ctx->UpdateSubresource(m_interlace.cb, 0, NULL, &cb, 0, 0);
 
@@ -755,25 +786,7 @@ void GSDevice11::InitExternalFX()
 	if (!ExShader_Compiled)
 	{
 		try {
-			std::string config_name(theApp.GetConfig("shaderfx_conf", "shaders/GSdx_FX_Settings.ini"));
-			std::ifstream fconfig(config_name);
-			std::stringstream shader;
-			if (fconfig.good())
-				shader << fconfig.rdbuf() << "\n";
-			else
-				fprintf(stderr, "GSdx: External shader config '%s' not loaded.\n", config_name.c_str());
-
-			std::string shader_name(theApp.GetConfig("shaderfx_glsl", "shaders/GSdx.fx"));
-			std::ifstream fshader(shader_name);
-			if (fshader.good())
-			{
-				shader << fshader.rdbuf();
-				CompileShader(shader.str().c_str(), shader.str().length(), shader_name.c_str(), nullptr, "ps_main", nullptr, &m_shaderfx.ps);
-			}
-			else
-			{
-				fprintf(stderr, "GSdx: External shader '%s' not loaded and will be disabled!\n", shader_name.c_str());
-			}
+			CompileShader("shaders/GSdx.fx", "ps_main", NULL, &m_shaderfx.ps);
 		}
 		catch (GSDXRecoverableError) {
 			printf("GSdx: failed to compile external post-processing shader. \n");
@@ -802,6 +815,41 @@ void GSDevice11::DoExternalFX(GSTexture* sTex, GSTexture* dTex)
 	StretchRect(sTex, sRect, dTex, dRect, m_shaderfx.ps, m_shaderfx.cb, true);
 }
 
+void GSDevice11::InitCustomShader()
+{
+	if (!CustomShader_Compiled)
+	{
+		try {
+			CompileShader("shaders/shader.fx", "ps_main", NULL, &m_customshader.ps);
+		}
+		catch (GSDXRecoverableError) {
+			printf("GSdx: failed to compile custom shader. \n");
+		}
+		CustomShader_Compiled = true;
+	}
+}
+
+void GSDevice11::DoCustomShader(GSTexture* sTex, GSTexture* dTex)
+{
+	GSVector2i s = dTex->GetSize();
+
+	GSVector4 sRect(0, 0, 1, 1);
+	GSVector4 dRect(0, 0, s.x, s.y);
+
+	CustomShaderConstantBuffer cb;
+
+	InitCustomShader();
+
+	cb.xyFrame = GSVector2(s.x, s.y);
+	cb.rcpFrame = GSVector4(1.0f / s.x, 1.0f / s.y, 0.0f, 0.0f);
+	cb.rcpFrameOpt = GSVector4::zero();
+
+	m_ctx->UpdateSubresource(m_customshader.cb, 0, NULL, &cb, 0, 0);
+
+	StretchRect(sTex, sRect, dTex, dRect, m_customshader.ps, m_customshader.cb, true);
+}
+
+
 // This shouldn't be necessary, we have some bug corrupting memory
 // and for some reason isolating this code makes the plugin not crash
 void GSDevice11::InitFXAA()
@@ -809,9 +857,7 @@ void GSDevice11::InitFXAA()
 	if (!FXAA_Compiled)
 	{
 		try {
-			vector<unsigned char> shader;
-			theApp.LoadResource(IDR_FXAA_FX, shader);
-			CompileShader((const char *)shader.data(), shader.size(), "fxaa.fx", nullptr, "ps_main", nullptr, &m_fxaa.ps);
+			CompileShader(IDR_FXAA_FX, "ps_main", NULL, &m_fxaa.ps);
 		}
 		catch (GSDXRecoverableError) {
 			printf("GSdx: failed to compile fxaa shader.\n");
@@ -1116,11 +1162,11 @@ void GSDevice11::PSSetShaderResources(GSTexture* sr0, GSTexture* sr1)
 	}
 }
 
-void GSDevice11::PSSetShaderResource(int i, GSTexture* sr)
+void GSDevice11::PSSetShaderResource(int i, GSTexture* sRect)
 {
 	ID3D11ShaderResourceView* srv = NULL;
 
-	if(sr) srv = *(GSTexture11*)sr;
+	if(sRect) srv = *(GSTexture11*)sRect;
 
 	PSSetShaderResourceView(i, srv);
 }
@@ -1262,15 +1308,14 @@ void GSDevice11::OMSetRenderTargets(GSTexture* rt, GSTexture* ds, const GSVector
 	GSVector2i size = rt ? rt->GetSize() : ds->GetSize();
 	if(m_state.viewport != size)
 	{
-		bool isNative = theApp.GetConfig("upscale_multiplier", 1) == 1;
 		m_state.viewport = size;
 
 		D3D11_VIEWPORT vp;
 
 		memset(&vp, 0, sizeof(vp));
 
-		vp.TopLeftX = (spritehack > 0 || isNative) ? 0.0f : -0.01f;
-		vp.TopLeftY = (spritehack > 0 || isNative) ? 0.0f : -0.01f;
+		vp.TopLeftX = 0;
+		vp.TopLeftY = 0;
 		vp.Width = (float)size.x;
 		vp.Height = (float)size.y;
 		vp.MinDepth = 0.0f;
@@ -1324,17 +1369,17 @@ void GSDevice11::OMSetRenderTargets(const GSVector2i& rtsize, int count, ID3D11U
 	}
 }
 
-void GSDevice11::CompileShader(const char* source, size_t size, const char* fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11VertexShader** vs, D3D11_INPUT_ELEMENT_DESC* layout, int count, ID3D11InputLayout** il)
+void GSDevice11::CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11VertexShader** vs, D3D11_INPUT_ELEMENT_DESC* layout, int count, ID3D11InputLayout** il)
 {
 	HRESULT hr;
 
-	vector<D3D_SHADER_MACRO> m;
+	vector<D3D11_SHADER_MACRO> m;
 
 	PrepareShaderMacro(m, macro);
 
-	CComPtr<ID3DBlob> shader, error;
+	CComPtr<ID3D11Blob> shader, error;
 
-	hr = s_pD3DCompile(source, size, fn, &m[0], s_old_d3d_compiler_dll? nullptr : include, entry, m_shader.vs.c_str(), 0, 0, &shader, &error);
+    hr = D3DX11CompileFromResource(theApp.GetModuleHandle(), MAKEINTRESOURCE(id), NULL, &m[0], NULL, entry, m_shader.vs.c_str(), 0, 0, NULL, &shader, &error, NULL);
 
 	if(error)
 	{
@@ -1361,17 +1406,17 @@ void GSDevice11::CompileShader(const char* source, size_t size, const char* fn, 
 	}
 }
 
-void GSDevice11::CompileShader(const char* source, size_t size, const char* fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11GeometryShader** gs)
+void GSDevice11::CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11GeometryShader** gs)
 {
 	HRESULT hr;
 
-	vector<D3D_SHADER_MACRO> m;
+	vector<D3D11_SHADER_MACRO> m;
 
 	PrepareShaderMacro(m, macro);
 
-	CComPtr<ID3DBlob> shader, error;
+	CComPtr<ID3D11Blob> shader, error;
 
-	hr = s_pD3DCompile(source, size, fn, &m[0], s_old_d3d_compiler_dll ? nullptr : include, entry, m_shader.gs.c_str(), 0, 0, &shader, &error);
+    hr = D3DX11CompileFromResource(theApp.GetModuleHandle(), MAKEINTRESOURCE(id), NULL, &m[0], NULL, entry, m_shader.gs.c_str(), 0, 0, NULL, &shader, &error, NULL);
 
 	if(error)
 	{
@@ -1391,17 +1436,17 @@ void GSDevice11::CompileShader(const char* source, size_t size, const char* fn, 
 	}
 }
 
-void GSDevice11::CompileShader(const char* source, size_t size, const char* fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11GeometryShader** gs, D3D11_SO_DECLARATION_ENTRY* layout, int count)
+void GSDevice11::CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11GeometryShader** gs, D3D11_SO_DECLARATION_ENTRY* layout, int count)
 {
 	HRESULT hr;
 
-	vector<D3D_SHADER_MACRO> m;
+	vector<D3D11_SHADER_MACRO> m;
 
 	PrepareShaderMacro(m, macro);
 
-	CComPtr<ID3DBlob> shader, error;
+	CComPtr<ID3D11Blob> shader, error;
 
-	hr = s_pD3DCompile(source, size, fn, &m[0], s_old_d3d_compiler_dll ? nullptr : include, entry, m_shader.gs.c_str(), 0, 0, &shader, &error);
+    hr = D3DX11CompileFromResource(theApp.GetModuleHandle(), MAKEINTRESOURCE(id), NULL, &m[0], NULL, entry, m_shader.gs.c_str(), 0, 0, NULL, &shader, &error, NULL);
 
 	if(error)
 	{
@@ -1421,17 +1466,48 @@ void GSDevice11::CompileShader(const char* source, size_t size, const char* fn, 
 	}
 }
 
-void GSDevice11::CompileShader(const char* source, size_t size, const char* fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11PixelShader** ps)
+void GSDevice11::CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11PixelShader** ps)
 {
 	HRESULT hr;
 
-	vector<D3D_SHADER_MACRO> m;
+	vector<D3D11_SHADER_MACRO> m;
 
 	PrepareShaderMacro(m, macro);
 
-	CComPtr<ID3DBlob> shader, error;
+	CComPtr<ID3D11Blob> shader, error;
 
-	hr = s_pD3DCompile(source, size, fn, &m[0], s_old_d3d_compiler_dll ? nullptr : include, entry, m_shader.ps.c_str(), 0, 0, &shader, &error);
+  //hr = D3DX11CompileFromResource(theApp.GetModuleHandle(), MAKEINTRESOURCE(id), NULL, &m[0], NULL, entry, m_shader.ps.c_str(), 0, 0, NULL, &shader, &error, NULL);
+
+	if( id == IDR_INTERLACE_FX )	//Shade boost;
+	{
+		HRSRC hSrc = FindResource( theApp.GetModuleHandle(), MAKEINTRESOURCE(IDR_INTERLACE_FX), RT_RCDATA );
+		if(FAILED(hSrc))
+		{
+			throw GSDXRecoverableError();
+		}
+
+		int iLen = SizeofResource(theApp.GetModuleHandle(),hSrc);	//64KB应该足够了。
+		HRSRC hResLoad = (HRSRC)LoadResource(theApp.GetModuleHandle(), hSrc);
+
+		char*lpResLock = (char*)LockResource(hResLoad);
+		char* pBufferSrc = new char[iLen+1];
+		char* pBuffer = new char[iLen*2];
+		memset( pBufferSrc, 0, iLen+1 );
+		memset( pBuffer, 0, iLen*2 );
+		
+		memcpy( pBufferSrc, lpResLock, iLen );
+		//写入亮度，对比度，色度修改信息。
+
+		sprintf( pBuffer, pBufferSrc, theApp.GetConfig("bright", "1.0").c_str(), theApp.GetConfig("saturation", "1.0").c_str(), theApp.GetConfig("InternalFilter", "0").c_str() );
+		
+		hr = D3DX11CompileFromMemory( (LPCSTR)pBuffer, iLen, NULL, &m[0], NULL, entry, m_shader.ps.c_str(), 0, 0, NULL, &shader, &error, NULL);
+		delete[] pBuffer;
+		delete[] pBufferSrc;
+	}
+	else
+	{
+		hr = D3DX11CompileFromResource(theApp.GetModuleHandle(), MAKEINTRESOURCE(id), NULL, &m[0], NULL, entry, m_shader.ps.c_str(), 0, 0, NULL, &shader, &error, NULL);
+	}
 
 	if(error)
 	{
@@ -1443,7 +1519,7 @@ void GSDevice11::CompileShader(const char* source, size_t size, const char* fn, 
 		throw GSDXRecoverableError();
 	}
 
-	hr = m_dev->CreatePixelShader((void*)shader->GetBufferPointer(), shader->GetBufferSize(), NULL, ps);
+	hr = m_dev->CreatePixelShader((void*)shader->GetBufferPointer(), shader->GetBufferSize(),NULL, ps);
 
 	if(FAILED(hr))
 	{
@@ -1451,17 +1527,49 @@ void GSDevice11::CompileShader(const char* source, size_t size, const char* fn, 
 	}
 }
 
-void GSDevice11::CompileShader(const char* source, size_t size, const char *fn, ID3DInclude *include, const char* entry, D3D_SHADER_MACRO* macro, ID3D11ComputeShader** cs)
+void GSDevice11::CompileShader(uint32 id, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11ComputeShader** cs)
 {
 	HRESULT hr;
 
-	vector<D3D_SHADER_MACRO> m;
+	vector<D3D11_SHADER_MACRO> m;
 
 	PrepareShaderMacro(m, macro);
 
-	CComPtr<ID3DBlob> shader, error;
+	CComPtr<ID3D11Blob> shader, error;
 
-	hr = s_pD3DCompile(source, size, fn, &m[0], s_old_d3d_compiler_dll ? nullptr : include, entry, m_shader.cs.c_str(), 0, 0, &shader, &error);
+    //hr = D3DX11CompileFromResource(theApp.GetModuleHandle(), MAKEINTRESOURCE(id), NULL, &m[0], NULL, entry, m_shader.cs.c_str(), 0, 0, NULL, &shader, &error, NULL);
+
+	if( id == IDR_INTERLACE_FX )	//Shade boost;
+	{
+		HRSRC hSrc = FindResource( theApp.GetModuleHandle(), MAKEINTRESOURCE(IDR_INTERLACE_FX), RT_RCDATA );
+		if(FAILED(hSrc))
+		{
+			throw GSDXRecoverableError();
+		}
+
+		int iLen = SizeofResource(theApp.GetModuleHandle(),hSrc);	//64KB应该足够了。
+		HRSRC hResLoad = (HRSRC)LoadResource(theApp.GetModuleHandle(), hSrc);
+
+		char*lpResLock = (char*)LockResource(hResLoad);
+		char* pBufferSrc = new char[iLen+1];
+		char* pBuffer = new char[iLen*2];
+		memset( pBufferSrc, 0, iLen+1 );
+		memset( pBuffer, 0, iLen*2 );
+		
+		memcpy( pBufferSrc, lpResLock, iLen );
+		//写入亮度，对比度，色度修改信息。
+
+		sprintf( pBuffer, pBufferSrc, theApp.GetConfig("bright", "1.0").c_str(), theApp.GetConfig("saturation", "1.0").c_str(), theApp.GetConfig("InternalFilter", "0").c_str() );
+		
+		hr = D3DX11CompileFromMemory( (LPCSTR)pBuffer, iLen, NULL, &m[0], NULL, entry, m_shader.cs.c_str(), 0, 0, NULL, &shader, &error, NULL);
+		delete[] pBuffer;
+		delete[] pBufferSrc;
+	}
+	else
+	{
+		hr = D3DX11CompileFromResource(theApp.GetModuleHandle(), MAKEINTRESOURCE(id), NULL, &m[0], NULL, entry, m_shader.cs.c_str(), 0, 0, NULL, &shader, &error, NULL);
+	}
+
 
 	if(error)
 	{
@@ -1473,10 +1581,107 @@ void GSDevice11::CompileShader(const char* source, size_t size, const char *fn, 
 		throw GSDXRecoverableError();
 	}
 
-	hr = m_dev->CreateComputeShader((void*)shader->GetBufferPointer(), shader->GetBufferSize(), NULL, cs);
+	hr = m_dev->CreateComputeShader((void*)shader->GetBufferPointer(), shader->GetBufferSize(),NULL, cs);
 
 	if(FAILED(hr))
 	{
 		throw GSDXRecoverableError();
 	}
 }
+
+void GSDevice11::CompileShader(const char* fn, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11VertexShader** vs, D3D11_INPUT_ELEMENT_DESC* layout, int count, ID3D11InputLayout** il)
+{
+    HRESULT hr;
+
+    vector<D3D11_SHADER_MACRO> m;
+
+    PrepareShaderMacro(m, macro);
+
+    CComPtr<ID3D11Blob> shader, error;
+
+    hr = D3DX11CompileFromFile(fn, &m[0], NULL, entry, m_shader.vs.c_str(), 0, 0, NULL, &shader, &error, NULL);
+
+    if(error)
+    {
+        printf("%s\n", (const char*)error->GetBufferPointer());
+    }
+
+    if(FAILED(hr))
+    {
+        throw GSDXRecoverableError();
+    }
+
+    hr = m_dev->CreateVertexShader((void*)shader->GetBufferPointer(), shader->GetBufferSize(), NULL, vs);
+
+    if(FAILED(hr))
+    {
+        throw GSDXRecoverableError();
+    }
+
+    hr = m_dev->CreateInputLayout(layout, count, shader->GetBufferPointer(), shader->GetBufferSize(), il);
+
+    if(FAILED(hr))
+    {
+        throw GSDXRecoverableError();
+    }
+}
+
+void GSDevice11::CompileShader(const char* fn, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11PixelShader** ps)
+{
+    HRESULT hr;
+
+    vector<D3D11_SHADER_MACRO> m;
+
+    PrepareShaderMacro(m, macro);
+
+    CComPtr<ID3D11Blob> shader, error;
+
+    hr = D3DX11CompileFromFile(fn, &m[0], NULL, entry, m_shader.ps.c_str(), 0, 0, NULL, &shader, &error, NULL);
+
+    if(error)
+    {
+        printf("%s\n", (const char*)error->GetBufferPointer());
+    }
+
+    if(FAILED(hr))
+    {
+        throw GSDXRecoverableError();
+    }
+
+    hr = m_dev->CreatePixelShader((void*)shader->GetBufferPointer(), shader->GetBufferSize(),NULL, ps);
+
+    if(FAILED(hr))
+    {
+        throw GSDXRecoverableError();
+    }
+}
+void GSDevice11::CompileShader(const char* fn, const char* entry, D3D11_SHADER_MACRO* macro, ID3D11ComputeShader** cs)
+{
+	HRESULT hr;
+
+	vector<D3D11_SHADER_MACRO> m;
+
+	PrepareShaderMacro(m, macro);
+
+	CComPtr<ID3D11Blob> shader, error;
+
+    hr = D3DX11CompileFromFile(fn, &m[0], NULL, entry, m_shader.cs.c_str(), 0, 0, NULL, &shader, &error, NULL);
+
+	if(error)
+	{
+		printf("%s\n", (const char*)error->GetBufferPointer());
+	}
+
+	if(FAILED(hr))
+	{
+		throw GSDXRecoverableError();
+	}
+
+	hr = m_dev->CreateComputeShader((void*)shader->GetBufferPointer(), shader->GetBufferSize(),NULL, cs);
+
+	if(FAILED(hr))
+	{
+		throw GSDXRecoverableError();
+	}
+}
+

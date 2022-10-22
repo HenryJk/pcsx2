@@ -28,6 +28,7 @@ class GSTextureCache
 {
 public:
 	enum {RenderTarget, DepthStencil};
+	bool UserHacks_NVIDIAHack;
 
 	class Surface : public GSAlignedClass<32>
 	{
@@ -40,7 +41,6 @@ public:
 		GIFRegTEXA m_TEXA;
 		int m_age;
 		uint8* m_temp;
-		bool m_32_bits_fmt; // Allow to detect the casting of 32 bits as 16 bits texture
 
 	public:
 		Surface(GSRenderer* r, uint8* temp);
@@ -81,11 +81,9 @@ public:
 		bool m_used;
 		GSDirtyRectList m_dirty;
 		GSVector4i m_valid;
-		bool m_depth_supported;
-		bool m_dirty_alpha;
 
 	public:
-		Target(GSRenderer* r, const GIFRegTEX0& TEX0, uint8* temp, bool depth_supported);
+		Target(GSRenderer* r, const GIFRegTEX0& TEX0, uint8* temp);
 
 		virtual void Update();
 	};
@@ -102,7 +100,6 @@ public:
 
 		void Add(Source* s, const GIFRegTEX0& TEX0, const GSOffset* off);
 		void RemoveAll();
-		void RemovePartial();
 		void RemoveAt(Source* s);
 	};
 
@@ -111,14 +108,12 @@ protected:
 	SourceMap m_src;
 	list<Target*> m_dst[2];
 	bool m_paltex;
+	bool UserHacks_Skiptexhotkey;
 	int m_spritehack;
-	bool m_preload_frame;
+	int m_skiptex;
 	uint8* m_temp;
-	bool m_can_convert_depth;
-	int m_crc_hack_level;
-	static bool m_disable_partial_invalidation;
 
-	virtual Source* CreateSource(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, Target* t = NULL, bool half_right = false);
+	virtual Source* CreateSource(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, Target* t = NULL);
 	virtual Target* CreateTarget(const GIFRegTEX0& TEX0, int w, int h, int type);
 
 	virtual int Get8bitFormat() = 0;
@@ -129,8 +124,6 @@ protected:
 	virtual void Read(Target* t, const GSVector4i& r) = 0;
 #endif
 
-	virtual bool CanConvertDepth() { return m_can_convert_depth; }
-
 public:
 	GSTextureCache(GSRenderer* r);
 	virtual ~GSTextureCache();
@@ -138,22 +131,14 @@ public:
 	virtual void Read(Target* t, const GSVector4i& r) = 0;
 #endif
 	void RemoveAll();
-	void RemovePartial();
 
 	Source* LookupSource(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, const GSVector4i& r);
 	Target* LookupTarget(const GIFRegTEX0& TEX0, int w, int h, int type, bool used);
-	Target* LookupTarget(const GIFRegTEX0& TEX0, int w, int h, int real_h);
+	Target* LookupTarget(const GIFRegTEX0& TEX0, int w, int h);
 
-	void InvalidateVideoMemType(int type, uint32 bp);
 	void InvalidateVideoMem(GSOffset* off, const GSVector4i& r, bool target = true);
 	void InvalidateLocalMem(GSOffset* off, const GSVector4i& r);
 
 	void IncAge();
 	bool UserHacks_HalfPixelOffset;
-
-	const char* to_string(int type) {
-		return (type == DepthStencil) ? "Depth" : "Color";
-	}
-
-	void PrintMemoryUsage();
 };

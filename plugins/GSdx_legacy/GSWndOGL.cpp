@@ -24,7 +24,7 @@
 
 #if defined(__linux__)
 GSWndOGL::GSWndOGL()
-	: m_NativeWindow(0), m_NativeDisplay(NULL), m_context(0), m_swapinterval(NULL)
+	: m_NativeWindow(0), m_NativeDisplay(NULL), m_swapinterval(NULL)
 {
 }
 
@@ -81,9 +81,6 @@ void GSWndOGL::CreateContext(int major, int minor)
 		GLX_CONTEXT_MINOR_VERSION_ARB, minor,
 #ifdef ENABLE_OGL_DEBUG
 		GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_DEBUG_BIT_ARB,
-#else
-		// Open Source isn't happy with an unsupported flags...
-		//GLX_CONTEXT_FLAGS_ARB, GL_CONTEXT_FLAG_NO_ERROR_BIT_KHR,
 #endif
 		GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
 		None
@@ -127,7 +124,7 @@ void GSWndOGL::CheckContext()
 	int glxMajorVersion, glxMinorVersion;
 	glXQueryVersion(m_NativeDisplay, &glxMajorVersion, &glxMinorVersion);
 	if (glXIsDirect(m_NativeDisplay, m_context))
-		fprintf(stdout, "glX-Version %d.%d with Direct Rendering\n", glxMajorVersion, glxMinorVersion);
+		fprintf(stderr, "glX-Version %d.%d with Direct Rendering\n", glxMajorVersion, glxMinorVersion);
 	else {
 		fprintf(stderr, "glX-Version %d.%d with Indirect Rendering !!! It won't support properly opengl\n", glxMajorVersion, glxMinorVersion);
 		throw GSDXRecoverableError();

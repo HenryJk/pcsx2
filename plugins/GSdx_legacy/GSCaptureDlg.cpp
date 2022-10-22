@@ -23,18 +23,6 @@
 #include "GSdx.h"
 #include "GSCaptureDlg.h"
 
-#define BeginEnumSysDev(clsid, pMoniker) \
-	{CComPtr<ICreateDevEnum> pDevEnum4$##clsid; \
-	pDevEnum4$##clsid.CoCreateInstance(CLSID_SystemDeviceEnum); \
-	CComPtr<IEnumMoniker> pClassEnum4$##clsid; \
-	if(SUCCEEDED(pDevEnum4$##clsid->CreateClassEnumerator(clsid, &pClassEnum4$##clsid, 0)) \
-	&& pClassEnum4$##clsid) \
-	{ \
-		for(CComPtr<IMoniker> pMoniker; pClassEnum4$##clsid->Next(1, &pMoniker, 0) == S_OK; pMoniker = NULL) \
-		{ \
-
-#define EndEnumSysDev }}}
-
 GSCaptureDlg::GSCaptureDlg()
 	: GSDialog(IDD_CAPTURE)
 {
@@ -76,7 +64,7 @@ void GSCaptureDlg::OnInit()
 
 	m_codecs.clear();
 
-	_bstr_t selected = theApp.GetConfig("CaptureVideoCodecDisplayName", "").c_str();
+	string selected = theApp.GetConfig("CaptureVideoCodecDisplayName", "");
 
 	ComboBoxAppend(IDC_CODECS, "Uncompressed", 0, true);
 
@@ -122,7 +110,7 @@ void GSCaptureDlg::OnInit()
 
 		string s(c.FriendlyName.begin(), c.FriendlyName.end());
 
-		ComboBoxAppend(IDC_CODECS, s.c_str(), (LPARAM)&m_codecs.back(), c.DisplayName == selected);
+		ComboBoxAppend(IDC_CODECS, s.c_str(), (LPARAM)&m_codecs.back(), s == selected);
 	}
 	EndEnumSysDev
 }
@@ -211,7 +199,9 @@ bool GSCaptureDlg::OnCommand(HWND hWnd, UINT id, UINT code)
 
 		if (ris != 2)
 		{
-			theApp.SetConfig("CaptureVideoCodecDisplayName", c.DisplayName);
+			wstring s = wstring(c.DisplayName);
+
+			theApp.SetConfig("CaptureVideoCodecDisplayName", string(s.begin(), s.end()).c_str());
 		}
 		else
 		{

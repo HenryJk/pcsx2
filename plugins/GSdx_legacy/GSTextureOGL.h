@@ -31,14 +31,14 @@ namespace PboPool {
 
 	char* Map(uint32 size);
 	void Unmap();
-	uptr Offset();
+	uint32 Offset();
 	void EndTransfer();
 
 	void Init();
 	void Destroy();
 }
 
-class GSTextureOGL final : public GSTexture
+class GSTextureOGL : public GSTexture
 {
 	private:
 		GLuint m_texture_id;	 // the texture id
@@ -48,13 +48,6 @@ class GSTextureOGL final : public GSTexture
 		bool m_clean;
 
 		uint8* m_local_buffer;
-		// Avoid alignment constrain
-		//GSVector4i m_r;
-		int m_r_x;
-		int m_r_y;
-		int m_r_w;
-		int m_r_h;
-
 
 		// internal opengl format/type/alignment
 		GLenum m_int_format;
@@ -62,23 +55,25 @@ class GSTextureOGL final : public GSTexture
 		uint32 m_int_alignment;
 		uint32 m_int_shift;
 
+		GLuint64 m_handles[12];
+
 	public:
 		explicit GSTextureOGL(int type, int w, int h, int format, GLuint fbo_read);
 		virtual ~GSTextureOGL();
 
-		void Invalidate() final;
-		bool Update(const GSVector4i& r, const void* data, int pitch) final;
-		bool Map(GSMap& m, const GSVector4i* r = NULL) final;
-		void Unmap() final;
-		bool Save(const string& fn, bool user_image = false, bool dds = false) final;
+		void Invalidate();
+		bool Update(const GSVector4i& r, const void* data, int pitch);
+		bool Map(GSMap& m, const GSVector4i* r = NULL);
+		void Unmap();
+		bool Save(const string& fn, bool dds = false);
+		void Save(const string& fn, const void* image, uint32 pitch);
 
 		bool IsBackbuffer() { return (m_type == GSTexture::Backbuffer); }
 		bool IsDss() { return (m_type == GSTexture::DepthStencil); }
 
-		uint32 GetID() final { return m_texture_id; }
+		uint32 GetID() { return m_texture_id; }
+		GLuint64 GetHandle(GLuint sampler_id);
 		bool HasBeenCleaned() { return m_clean; }
 		void WasAttached() { m_clean = false; m_dirty = true; }
 		void WasCleaned() { m_clean = true; }
-
-		uint32 GetMemUsage();
 };

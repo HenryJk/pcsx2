@@ -26,36 +26,7 @@
 #include "GSVertex.h"
 #include "GSAlignedClass.h"
 
-enum ShaderConvert {
-	ShaderConvert_COPY = 0,
-	ShaderConvert_RGBA8_TO_16_BITS,
-	ShaderConvert_DATM_1,
-	ShaderConvert_DATM_0,
-	ShaderConvert_MOD_256,
-	ShaderConvert_SCANLINE = 5,
-	ShaderConvert_DIAGONAL_FILTER,
-	ShaderConvert_TRANSPARENCY_FILTER,
-	ShaderConvert_TRIANGULAR_FILTER,
-	ShaderConvert_COMPLEX_FILTER,
-	ShaderConvert_FLOAT32_TO_32_BITS = 10,
-	ShaderConvert_FLOAT32_TO_RGBA8,
-	ShaderConvert_FLOAT16_TO_RGB5A1,
-	ShaderConvert_RGBA8_TO_FLOAT32 = 13,
-	ShaderConvert_RGBA8_TO_FLOAT24,
-	ShaderConvert_RGBA8_TO_FLOAT16,
-	ShaderConvert_RGB5A1_TO_FLOAT16,
-	ShaderConvert_RGBA_TO_8I = 17
-};
-
 #pragma pack(push, 1)
-
-class ConvertConstantBuffer
-{
-public:
-	GSVector4i ScalingFactor;
-
-	ConvertConstantBuffer() {memset(this, 0, sizeof(*this));}
-};
 
 class MergeConstantBuffer
 {
@@ -70,7 +41,7 @@ class InterlaceConstantBuffer
 public:
 	GSVector2 ZrH;
 	float hH;
-	float _pad[1];
+	float fSaturation;
 
 	InterlaceConstantBuffer() {memset(this, 0, sizeof(*this));}
 };
@@ -83,6 +54,16 @@ public:
 	GSVector4 rcpFrameOpt;
 
 	ExternalFXConstantBuffer() { memset(this, 0, sizeof(*this)); }
+};
+
+class CustomShaderConstantBuffer
+{
+public:
+	GSVector2 xyFrame;
+	GSVector4 rcpFrame;
+	GSVector4 rcpFrameOpt;
+
+	CustomShaderConstantBuffer() { memset(this, 0, sizeof(*this)); }
 };
 
 class FXAAConstantBuffer
@@ -110,6 +91,7 @@ class GSDevice : public GSAlignedClass<32>
 	list<GSTexture*> m_pool;
 
 protected:
+	float m_fColorEnginePara;	//Output color saturation;
 	GSWnd* m_wnd;
 	bool m_vsync;
 	bool m_rbswapped;
@@ -118,6 +100,7 @@ protected:
 	GSTexture* m_weavebob;
 	GSTexture* m_blend;
 	GSTexture* m_shaderfx;
+	GSTexture* m_customshader;
 	GSTexture* m_fxaa;
 	GSTexture* m_shadeboost;
 	GSTexture* m_1x1;
@@ -134,6 +117,7 @@ protected:
 	virtual void DoFXAA(GSTexture* sTex, GSTexture* dTex) {}
 	virtual void DoShadeBoost(GSTexture* sTex, GSTexture* dTex) {}
 	virtual void DoExternalFX(GSTexture* sTex, GSTexture* dTex) {}
+	virtual void DoCustomShader(GSTexture* sTex, GSTexture* dTex) {}
 
 public:
 	GSDevice();
@@ -188,14 +172,13 @@ public:
 	void FXAA();
 	void ShadeBoost();
 	void ExternalFX();
+	void CustomShader();
 
 	bool ResizeTexture(GSTexture** t, int w, int h);
 
 	bool IsRBSwapped() {return m_rbswapped;}
 
 	void AgePool();
-
-	virtual void PrintMemoryUsage();
 };
 
 struct GSAdapter
@@ -216,7 +199,7 @@ struct GSAdapter
 		return (std::string)*this == s;
 	}
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 	GSAdapter(const DXGI_ADAPTER_DESC1 &desc_dxgi);
 	GSAdapter(const D3DADAPTER_IDENTIFIER9 &desc_d3d9);
 #endif

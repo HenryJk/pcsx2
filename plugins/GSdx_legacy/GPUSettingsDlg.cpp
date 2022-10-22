@@ -72,9 +72,19 @@ void GPUSettingsDlg::OnInit()
 	ComboBoxInit(IDC_SCALE, theApp.m_gpu_scale, theApp.GetConfig("scale_x", 0) | (theApp.GetConfig("scale_y", 0) << 2));
 
 	CheckDlgButton(m_hWnd, IDC_WINDOWED, theApp.GetConfig("windowed", 1));
+	// Shade Boost
+	CheckDlgButton(m_hWnd, IDC_SHADEBOOST, theApp.GetConfig("ShadeBoost", 0));
+	// FXAA shader
+	CheckDlgButton(m_hWnd, IDC_FXAA, theApp.GetConfig("Fxaa", 0));
+	// External FX shader
+	CheckDlgButton(m_hWnd, IDC_SHADER_FX, theApp.GetConfig("shaderfx", 0));
+	// Custom Shader
+	CheckDlgButton(m_hWnd, IDC_CUSTOMSHADER, theApp.GetConfig("customshader", 0));
+	// Vsync
+	CheckDlgButton(m_hWnd, IDC_VSYNC, theApp.GetConfig("vsync", 0));
 
 	SendMessage(GetDlgItem(m_hWnd, IDC_SWTHREADS), UDM_SETRANGE, 0, MAKELPARAM(16, 0));
-	SendMessage(GetDlgItem(m_hWnd, IDC_SWTHREADS), UDM_SETPOS, 0, MAKELPARAM(theApp.GetConfig("extrathreads", DEFAULT_EXTRA_RENDERING_THREADS), 0));
+	SendMessage(GetDlgItem(m_hWnd, IDC_SWTHREADS), UDM_SETPOS, 0, MAKELPARAM(theApp.GetConfig("extrathreads", 0), 0));
 
 	UpdateControls();
 }
@@ -84,6 +94,14 @@ bool GPUSettingsDlg::OnCommand(HWND hWnd, UINT id, UINT code)
 	if(id == IDC_RENDERER && code == CBN_SELCHANGE)
 	{
 		UpdateControls();
+	}
+	else if(id == IDC_SHADEBOOST && code == BN_CLICKED)
+	{
+		UpdateControls();
+	}
+	else if(id == IDC_SHADEBUTTON && code == BN_CLICKED)
+	{
+		ShadeBoostDlg.DoModal();
 	}
 	else if(id == IDOK)
 	{
@@ -126,6 +144,16 @@ bool GPUSettingsDlg::OnCommand(HWND hWnd, UINT id, UINT code)
 
 		theApp.SetConfig("extrathreads", (int)SendMessage(GetDlgItem(m_hWnd, IDC_SWTHREADS), UDM_GETPOS, 0, 0));
 		theApp.SetConfig("windowed", (int)IsDlgButtonChecked(m_hWnd, IDC_WINDOWED));
+		// Shade Boost
+		theApp.SetConfig("ShadeBoost", (int)IsDlgButtonChecked(m_hWnd, IDC_SHADEBOOST));
+		// FXAA shader
+		theApp.SetConfig("Fxaa", (int)IsDlgButtonChecked(m_hWnd, IDC_FXAA));
+		// External FX Shader
+		theApp.SetConfig("shaderfx", (int)IsDlgButtonChecked(m_hWnd, IDC_SHADER_FX));
+		// Custom Shader
+		theApp.SetConfig("customshader", (int)IsDlgButtonChecked(m_hWnd, IDC_CUSTOMSHADER));
+		// Vsync
+		theApp.SetConfig("vsync", (int)IsDlgButtonChecked(m_hWnd, IDC_VSYNC));
 	}
 
 	return __super::OnCommand(hWnd, id, code);
@@ -147,5 +175,112 @@ void GPUSettingsDlg::UpdateControls()
 		EnableWindow(GetDlgItem(m_hWnd, IDC_SCALE), sw);
 		EnableWindow(GetDlgItem(m_hWnd, IDC_SWTHREADS_EDIT), sw);
 		EnableWindow(GetDlgItem(m_hWnd, IDC_SWTHREADS), sw);
+		// Shade Boost
+		EnableWindow(GetDlgItem(m_hWnd, IDC_SHADEBUTTON), IsDlgButtonChecked(m_hWnd, IDC_SHADEBOOST) == BST_CHECKED);
 	}
+}
+
+// Shade Boost Dialog
+
+GPUShadeBostDlg::GPUShadeBostDlg() : 
+	GSDialog(IDD_SHADEBOOST)
+{}
+
+void GPUShadeBostDlg::OnInit()
+{
+	contrast = theApp.GetConfig("ShadeBoost_Contrast", 50);
+	brightness = theApp.GetConfig("ShadeBoost_Brightness", 50);
+	saturation = theApp.GetConfig("ShadeBoost_Saturation", 50);
+
+	UpdateControls();
+}
+
+void GPUShadeBostDlg::UpdateControls()
+{
+	SendMessage(GetDlgItem(m_hWnd, IDC_SATURATION_SLIDER), TBM_SETRANGE, TRUE, MAKELONG(0, 100));
+	SendMessage(GetDlgItem(m_hWnd, IDC_BRIGHTNESS_SLIDER), TBM_SETRANGE, TRUE, MAKELONG(0, 100));
+	SendMessage(GetDlgItem(m_hWnd, IDC_CONTRAST_SLIDER), TBM_SETRANGE, TRUE, MAKELONG(0, 100));
+
+	SendMessage(GetDlgItem(m_hWnd, IDC_SATURATION_SLIDER), TBM_SETPOS, TRUE, saturation);
+	SendMessage(GetDlgItem(m_hWnd, IDC_BRIGHTNESS_SLIDER), TBM_SETPOS, TRUE, brightness);
+	SendMessage(GetDlgItem(m_hWnd, IDC_CONTRAST_SLIDER), TBM_SETPOS, TRUE, contrast);
+
+	char text[8] = {0};
+
+	sprintf(text, "%d", saturation);
+	SetDlgItemText(m_hWnd, IDC_SATURATION_TEXT, text);
+	sprintf(text, "%d", brightness);
+	SetDlgItemText(m_hWnd, IDC_BRIGHTNESS_TEXT, text);
+	sprintf(text, "%d", contrast);
+	SetDlgItemText(m_hWnd, IDC_CONTRAST_TEXT, text);
+}
+
+bool GPUShadeBostDlg::OnMessage(UINT message, WPARAM wParam, LPARAM lParam)
+{
+	switch(message)
+	{
+	case WM_HSCROLL:	
+	{											
+		if((HWND)lParam == GetDlgItem(m_hWnd, IDC_SATURATION_SLIDER)) 
+		{	
+			char text[8] = {0};
+
+			saturation = SendMessage(GetDlgItem(m_hWnd, IDC_SATURATION_SLIDER),TBM_GETPOS,0,0);			
+				
+			sprintf(text, "%d", saturation);
+			SetDlgItemText(m_hWnd, IDC_SATURATION_TEXT, text);
+		}
+		else if((HWND)lParam == GetDlgItem(m_hWnd, IDC_BRIGHTNESS_SLIDER)) 
+		{	
+			char text[8] = {0};
+
+			brightness = SendMessage(GetDlgItem(m_hWnd, IDC_BRIGHTNESS_SLIDER),TBM_GETPOS,0,0);			
+				
+			sprintf(text, "%d", brightness);
+			SetDlgItemText(m_hWnd, IDC_BRIGHTNESS_TEXT, text);
+		}
+		else if((HWND)lParam == GetDlgItem(m_hWnd, IDC_CONTRAST_SLIDER)) 
+		{	
+			char text[8] = {0};
+
+			contrast = SendMessage(GetDlgItem(m_hWnd, IDC_CONTRAST_SLIDER),TBM_GETPOS,0,0);
+							
+			sprintf(text, "%d", contrast);
+			SetDlgItemText(m_hWnd, IDC_CONTRAST_TEXT, text);
+		}
+	} break;
+
+	case WM_COMMAND:
+	{
+		int id = LOWORD(wParam);
+
+		switch(id)
+		{
+		case IDOK: 
+		{
+			theApp.SetConfig("ShadeBoost_Contrast", contrast);
+			theApp.SetConfig("ShadeBoost_Brightness", brightness);
+			theApp.SetConfig("ShadeBoost_Saturation", saturation);
+			EndDialog(m_hWnd, id);		
+		} break;
+
+		case IDRESET:
+		{
+			contrast = 50;
+			brightness = 50;
+			saturation = 50;
+
+			UpdateControls();
+		} break;
+		}
+
+	} break;
+
+	case WM_CLOSE:EndDialog(m_hWnd, IDCANCEL); break;
+
+	default: return false;
+	}
+	
+
+	return true;
 }

@@ -21,7 +21,7 @@
 
 #pragma once
 
-#define PLUGIN_VERSION 0
+#define PLUGIN_VERSION 16
 
 #define VM_SIZE 4194304
 #define PAGE_SIZE 8192
@@ -215,40 +215,6 @@ enum GS_AFAIL
 	AFAIL_ZB_ONLY	= 2,
 	AFAIL_RGB_ONLY	= 3,
 };
-
-enum class GSRendererType : int8_t
-{
-	Undefined = -1,
-
-	DX9_HW = 0,
-	DX9_SW = 1,
-	DX9_OpenCL = 14,
-	DX9_Null = 2,
-
-	DX1011_HW = 3,
-	DX1011_SW = 4,
-	DX1011_OpenCL = 15,
-	DX1011_Null = 5,
-
-	Null_HW = 9,
-	Null_SW = 10,
-	Null_OpenCL = 16,
-	Null_Null = 11,
-
-	OGL_HW = 12,
-	OGL_SW = 13,
-	OGL_OpenCL = 17,
-
-#ifdef _WIN32
-	Default = DX9_HW
-#else
-	// Use ogl renderer as default otherwise it crash at startup
-	// GSRenderOGL only GSDeviceOGL (not GSDeviceNULL)
-	Default = OGL_HW
-#endif
-
-};
-
 
 #define REG32(name) \
 union name			\
@@ -557,7 +523,6 @@ REG_END2
 	// opaque => output will be Cs/As
 	__forceinline bool IsOpaque() const {return ((A == B || (C == 2 && FIX == 0)) && D == 0) || (A == 0 && B == D && C == 2 && FIX == 0x80);}
 	__forceinline bool IsOpaque(int amin, int amax) const {return ((A == B || amax == 0) && D == 0) || (A == 0 && B == D && amin == 0x80 && amax == 0x80);}
-	__forceinline bool IsCd() { return (A == B) && (D == 1);}
 REG_END2
 
 REG64_(GIFReg, BITBLTBUF)
@@ -1280,21 +1245,3 @@ enum {FREEZE_LOAD=0, FREEZE_SAVE=1, FREEZE_SIZE=2};
 struct GSFreezeData {int size; uint8* data;};
 
 enum stateType {ST_WRITE, ST_TRANSFER, ST_VSYNC};
-
-// default gs config settings
-#define DEFAULT_EXTRA_RENDERING_THREADS 2
-
-// GS Video modes macros
-#define Vmode_VESA_DTV			(m_regs->SMODE1.CMOD == 0)
-#define Vmode_NTSC				(m_regs->SMODE1.CMOD == 2)
-#define Vmode_PAL				(m_regs->SMODE1.CMOD == 3)
-#define Vmode_VESA_1A			(m_regs->SMODE1.LC == 15 && Vmode_VESA_DTV)
-#define Vmode_VESA_1C			(m_regs->SMODE1.LC == 28 && Vmode_VESA_DTV)
-#define Vmode_VESA_2B			(m_regs->SMODE1.LC == 71 && Vmode_VESA_DTV)
-#define Vmode_VESA_2D			(m_regs->SMODE1.LC == 44 && Vmode_VESA_DTV)
-#define Vmode_VESA_3B			(m_regs->SMODE1.LC == 58 && Vmode_VESA_DTV)
-#define Vmode_VESA_3D			(m_regs->SMODE1.LC == 35 && Vmode_VESA_DTV)
-#define Vmode_VESA_4A			(m_regs->SMODE1.LC == 8  && Vmode_VESA_DTV)
-#define Vmode_VESA_4B			(m_regs->SMODE1.LC == 10 && Vmode_VESA_DTV)
-#define Vmode_DTV_480P			(m_regs->SMODE1.LC == 32 && Vmode_VESA_DTV)
-#define Vmode_DTV_720P_1080I	(m_regs->SMODE1.LC == 22 && Vmode_VESA_DTV)

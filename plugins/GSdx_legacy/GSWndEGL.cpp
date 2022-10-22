@@ -39,9 +39,6 @@ void GSWndEGL::CreateContext(int major, int minor)
 		EGL_CONTEXT_MINOR_VERSION_KHR, minor,
 #ifdef ENABLE_OGL_DEBUG
 		EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
-#else
-		// Open Source isn't happy with an unsupported flags...
-		//EGL_CONTEXT_FLAGS_KHR, GL_CONTEXT_FLAG_NO_ERROR_BIT_KHR,
 #endif
 		EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR,
 		EGL_NONE
@@ -61,7 +58,7 @@ void GSWndEGL::CreateContext(int major, int minor)
 	eglChooseConfig(m_eglDisplay, attrList, &eglConfig, 1, &numConfigs);
 	if ( numConfigs == 0 )
 	{
-		fprintf(stderr,"EGL: Failed to get a frame buffer config! (0x%x)\n", eglGetError() );
+		fprintf(stderr,"EGL: Failed to get a frame buffer config!\n");
 		throw GSDXRecoverableError();
 	}
 
@@ -286,15 +283,11 @@ void GSWndEGL::OpenEGLDisplay()
 {
 	// Create an EGL display from the native display
 	m_eglDisplay = eglGetDisplay((EGLNativeDisplayType)m_NativeDisplay);
-	if ( m_eglDisplay == EGL_NO_DISPLAY ) {
-		fprintf(stderr,"EGL: Failed to open a display! (0x%x)\n", eglGetError() );
+	if ( m_eglDisplay == EGL_NO_DISPLAY )
 		throw GSDXRecoverableError();
-	}
 
-	if ( !eglInitialize(m_eglDisplay, NULL, NULL) ) {
-		fprintf(stderr,"EGL: Failed to initialize the display! (0x%x)\n", eglGetError() );
+	if ( !eglInitialize(m_eglDisplay, NULL, NULL) )
 		throw GSDXRecoverableError();
-	}
 }
 
 #endif

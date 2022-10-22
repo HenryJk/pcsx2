@@ -29,7 +29,7 @@
 #include "GSRendererOGL.h"
 #include "GSRendererCL.h"
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 #include "GSRendererDX9.h"
 #include "GSRendererDX11.h"
@@ -62,13 +62,14 @@ extern bool RunLinuxDialog();
 static GSRenderer* s_gs = NULL;
 static void (*s_irq)() = NULL;
 static uint8* s_basemem = NULL;
-static GSRendererType s_renderer = GSRendererType::Undefined;
+static int s_renderer = -1;
 static bool s_framelimit = true;
 static bool s_vsync = false;
 static bool s_exclusive = true;
-static const char *s_renderer_name = "";
-static const char *s_renderer_type = "";
-bool gsopen_done = false; // crash guard for GSgetTitleInfo2 and GSKeyEvent (replace with lock?)
+#ifdef _WINDOWS
+static bool s_isgsopen2 = false; // boolean to remove some stuff from the config panel in new PCSX2's/
+#endif
+bool gsopen_done = false; // crash guard for GSgetTitleInfo2
 
 EXPORT_C_(uint32) PS2EgetLibType()
 {
@@ -82,11 +83,20 @@ EXPORT_C_(const char*) PS2EgetLibName()
 
 EXPORT_C_(uint32) PS2EgetLibVersion2(uint32 type)
 {
-	const uint32 revision = 1;
-	const uint32 build = 0;
+	const uint32 revision = 0;
+	const uint32 build = 1;
 
 	return (build << 0) | (revision << 8) | (PS2E_GS_VERSION << 16) | (PLUGIN_VERSION << 24);
 }
+
+#ifdef _WINDOWS
+
+EXPORT_C_(void) PS2EsetEmuVersion(const char* emuId, uint32 version)
+{
+	s_isgsopen2 = true;
+}
+
+#endif
 
 EXPORT_C_(uint32) PS2EgetCpuPlatform()
 {
@@ -123,14 +133,15 @@ EXPORT_C_(int) GSinit()
 		return -1;
 	}
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 	s_hr = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
-	if (!GSDeviceDX::LoadD3DCompiler())
+	if(!GSUtil::CheckDirectX())
 	{
 		return -1;
 	}
+
 #endif
 
 	return 0;
@@ -144,9 +155,9 @@ EXPORT_C GSshutdown()
 
 	s_gs = NULL;
 
-	s_renderer = GSRendererType::Undefined;
+	s_renderer = -1;
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 	if(SUCCEEDED(s_hr))
 	{
@@ -154,8 +165,6 @@ EXPORT_C GSshutdown()
 
 		s_hr = E_FAIL;
 	}
-
-	GSDeviceDX::FreeD3DCompiler();
 
 #endif
 }
@@ -180,25 +189,32 @@ EXPORT_C GSclose()
 	}
 }
 
-static int _GSopen(void** dsp, const char* title, GSRendererType renderer, int threads = -1)
+static int _GSopen(void** dsp, char* title, int renderer, int threads = -1)
 {
+	// I really don't know the impact on windows! It could work
+#ifdef __linux__
+	if (theApp.GetConfig("enable_nvidia_multi_thread", 1)) {
+		setenv("__GL_THREADED_OPTIMIZATIONS", "1", 0);
+	}
+#endif
+
 	GSDevice* dev = NULL;
 
-	if(renderer == GSRendererType::Undefined)
+	if(renderer == -1)
 	{
-		renderer = static_cast<GSRendererType>(theApp.GetConfig("Renderer", static_cast<int>(GSRendererType::Default)));
+		renderer = theApp.GetConfig("renderer", 0);
 	}
 
 	if(threads == -1)
 	{
-		threads = theApp.GetConfig("extrathreads", DEFAULT_EXTRA_RENDERING_THREADS);
+		threads = theApp.GetConfig("extrathreads", 0);
 	}
 
-	GSWnd* wnd[2] = { NULL, NULL };
+	GSWnd* wnd[2];
 
 	try
 	{
-		if (s_renderer != renderer)
+		if(s_renderer != renderer)
 		{
 			// Emulator has made a render change request, which requires a completely
 			// new s_gs -- if the emu doesn't save/restore the GS state across this
@@ -209,119 +225,57 @@ static int _GSopen(void** dsp, const char* title, GSRendererType renderer, int t
 			s_gs = NULL;
 		}
 
-		const char* renderer_fullname = "";
-		const char* renderer_mode = "";
-
-		switch (renderer)
-		{		
-		case GSRendererType::DX9_SW:
-		case GSRendererType::DX1011_SW:
-		case GSRendererType::Null_SW:
-		case GSRendererType::OGL_SW:
-			renderer_mode = "(Software mode)";
-			break;
-		case GSRendererType::DX9_Null:
-		case GSRendererType::DX1011_Null:
-		case GSRendererType::Null_Null:
-			renderer_mode = "(Null mode)";
-			break;
-		case GSRendererType::DX9_OpenCL:
-		case GSRendererType::DX1011_OpenCL:
-		case GSRendererType::Null_OpenCL:
-		case GSRendererType::OGL_OpenCL:
-			renderer_mode = "(OpenCL)";
-			break;
-		default:
-			renderer_mode = "(Hardware mode)";
-			break;
-		}
-
-		switch (renderer)
+		switch(renderer)
 		{
 		default:
-#ifdef _WIN32
-		case GSRendererType::DX9_HW:
-		case GSRendererType::DX9_SW:
-		case GSRendererType::DX9_Null:
-		case GSRendererType::DX9_OpenCL:
-			dev = new GSDevice9();
-			s_renderer_name = " D3D9";
-			renderer_fullname = "Direct3D9";
+#ifdef _WINDOWS
+		case 0: case 1: case 2: case 14:
+			dev = new GSDevice9(); 
 			break;
-		case GSRendererType::DX1011_HW:
-		case GSRendererType::DX1011_SW:
-		case GSRendererType::DX1011_Null:
-		case GSRendererType::DX1011_OpenCL:
-			dev = new GSDevice11();
-			s_renderer_name = " D3D11";
-			renderer_fullname = "Direct3D11";
+		case 3: case 4: case 5: case 15:
+			dev = new GSDevice11(); 
 			break;
 #endif
-		case GSRendererType::Null_HW:
-		case GSRendererType::Null_SW:
-		case GSRendererType::Null_Null:
-		case GSRendererType::Null_OpenCL:
-			dev = new GSDeviceNull();
-			s_renderer_name = " Null";
-			renderer_fullname = "Null";
+		case 9: case 10: case 11: case 16:
+			dev = new GSDeviceNull(); 
 			break;
-		case GSRendererType::OGL_HW:
-		case GSRendererType::OGL_SW:
-		case GSRendererType::OGL_OpenCL:
-			dev = new GSDeviceOGL();
-			s_renderer_name = " OGL";
-			renderer_fullname = "OpenGL";
+		case 12: case 13: case 17:
+			dev = new GSDeviceOGL(); 
 			break;
 		}
 
-		printf("Current Renderer: %s %s\n", renderer_fullname, renderer_mode);
-
-		if (dev == NULL)
+		if(dev == NULL)
 		{
 			return -1;
 		}
 
-		if (s_gs == NULL)
+		if(s_gs == NULL)
 		{
-			switch (renderer)
+			switch(renderer)
 			{
 			default:
-#ifdef _WIN32
-			case GSRendererType::DX9_HW:
+#ifdef _WINDOWS
+			case 0:
 				s_gs = (GSRenderer*)new GSRendererDX9();
-				s_renderer_type = " HW";
 				break;
-			case GSRendererType::DX1011_HW:
-				s_gs = (GSRenderer*)new GSRendererDX11();
-				s_renderer_type = " HW";
+			case 3: 
+				s_gs = (GSRenderer*)new GSRendererDX11(); 
 				break;
 #endif
-			case GSRendererType::OGL_HW:
-				s_gs = (GSRenderer*)new GSRendererOGL();
-				s_renderer_type = " HW";
+			case 12: 
+				s_gs = (GSRenderer*)new GSRendererOGL(); 
 				break;
-			case GSRendererType::DX9_SW:
-			case GSRendererType::DX1011_SW:
-			case GSRendererType::Null_SW:
-			case GSRendererType::OGL_SW:
+			case 1: case 4: case 10: case 13:
 				s_gs = new GSRendererSW(threads);
-				s_renderer_type = " SW";
 				break;
-			case GSRendererType::DX9_Null:
-			case GSRendererType::DX1011_Null:
-			case GSRendererType::Null_Null:
+			case 2: case 5: case 11:
 				s_gs = new GSRendererNull();
-				s_renderer_type = " Null";
 				break;
-			case GSRendererType::DX9_OpenCL:
-			case GSRendererType::DX1011_OpenCL:
-			case GSRendererType::Null_OpenCL:
-			case GSRendererType::OGL_OpenCL:
+			case 14: case 15: case 16: case 17:
 #ifdef ENABLE_OPENCL
 				s_gs = new GSRendererCL();
-				s_renderer_type = " OCL";
 #else
-				printf("GSdx error: OpenCL is disabled\n");
+				printf("GSdx error: opencl is disabled\n");
 #endif
 				break;
 			}
@@ -333,12 +287,10 @@ static int _GSopen(void** dsp, const char* title, GSRendererType renderer, int t
 
 		if (s_gs->m_wnd == NULL)
 		{
-#ifdef _WIN32
-			switch (renderer)
+#ifdef _WINDOWS
+			switch(renderer)
 			{
-			case GSRendererType::OGL_HW:
-			case GSRendererType::OGL_SW:
-			case GSRendererType::OGL_OpenCL:
+			case 12: case 13: case 17:
 				s_gs->m_wnd = new GSWndWGL();
 				break;
 			default:
@@ -346,16 +298,16 @@ static int _GSopen(void** dsp, const char* title, GSRendererType renderer, int t
 				break;
 			}
 #else
-#ifdef EGL_SUPPORTED
-			wnd[0] = new GSWndEGL();
-			wnd[1] = new GSWndOGL();
-#else
 			wnd[0] = new GSWndOGL();
+#ifdef EGL_SUPPORTED
+			wnd[1] = new GSWndEGL();
+#else
+			wnd[1] = NULL;
 #endif
 #endif
 		}
 	}
-	catch (std::exception& ex)
+	catch(std::exception& ex)
 	{
 		// Allowing std exceptions to escape the scope of the plugin callstack could
 		// be problematic, because of differing typeids between DLL and EXE compilations.
@@ -404,7 +356,7 @@ static int _GSopen(void** dsp, const char* title, GSRendererType renderer, int t
 			return -1;
 		}
 #endif
-#ifdef _WIN32
+#ifdef _WINDOWS
 		if(!s_gs->CreateWnd(title, w, h))
 		{
 			GSclose();
@@ -448,23 +400,14 @@ static int _GSopen(void** dsp, const char* title, GSRendererType renderer, int t
 				}
 			}
 		}
-#endif
-#ifdef _WIN32
-		try
-		{
-			s_gs->m_wnd->Attach(*dsp, false);
-		}
-		catch (GSDXRecoverableError)
-		{
-			s_gs->m_wnd->Detach();
-			delete s_gs->m_wnd;
-			s_gs->m_wnd = NULL;
-		}
-#endif
 		if (s_gs->m_wnd == NULL)
 		{
 			return -1;
 		}
+#endif
+#ifdef _WINDOWS
+		s_gs->m_wnd->Attach(*dsp, false);
+#endif
 	}
 
 	if(!s_gs->CreateDevice(dev))
@@ -477,64 +420,46 @@ static int _GSopen(void** dsp, const char* title, GSRendererType renderer, int t
 
 		return -1;
 	}
-
-	if (renderer == GSRendererType::OGL_HW && theApp.GetConfig("debug_glsl_shader", 0) == 2) {
-		printf("GSdx: test OpenGL shader. Please wait...\n\n");
-		static_cast<GSDeviceOGL*>(s_gs->m_dev)->SelfShaderTest();
-		printf("\nGSdx: test OpenGL shader done. It will now exit\n");
-		return -1;
-	}
 	
 	return 0;
 }
 
 EXPORT_C_(int) GSopen2(void** dsp, uint32 flags)
 {
-	static bool stored_toggle_state = false;
-	bool toggle_state = !!(flags & 4);
-
-	GSRendererType renderer = s_renderer;
-	// Fresh start up or config file changed
-	if (renderer == GSRendererType::Undefined)
-	{
-#ifdef _WIN32
-		GSRendererType default_renderer = GSUtil::CheckDirect3D11Level() >= D3D_FEATURE_LEVEL_10_0 ? GSRendererType::DX1011_HW : GSRendererType::DX9_HW;
+#ifdef __linux__
+	// Use ogl renderer as default otherwise it crash at startup
+	// GSRenderOGL only GSDeviceOGL (not GSDeviceNULL)
+	int renderer = theApp.GetConfig("renderer", 12);
 #else
-		GSRendererType default_renderer = GSRendererType::Default;
+	int renderer = theApp.GetConfig("renderer", 0);
 #endif
-		renderer = static_cast<GSRendererType>(theApp.GetConfig("Renderer", static_cast<int>(default_renderer)));
-	}
-	else if (stored_toggle_state != toggle_state)
+
+	if(flags & 4)
 	{
-#ifdef _WIN32
-		GSRendererType best_sw_renderer = GSUtil::CheckDirect3D11Level() >= D3D_FEATURE_LEVEL_10_0 ? GSRendererType::DX1011_SW : GSRendererType::DX9_SW;
+#ifdef _WINDOWS
+		int best_sw_renderer = GSUtil::CheckDirect3D11Level() >= D3D_FEATURE_LEVEL_10_0 ? 4 : 1; // dx11 / dx9 sw
 
-
-		switch (renderer) {
-			// Use alternative renderer (SW if currently using HW renderer, and vice versa, keeping the same API and API version)
-		case GSRendererType::DX9_SW: renderer = GSRendererType::DX9_HW; break;
-		case GSRendererType::DX9_HW: renderer = GSRendererType::DX9_SW; break;
-		case GSRendererType::DX1011_SW: renderer = GSRendererType::DX1011_HW; break;
-		case GSRendererType::DX1011_HW: renderer = GSRendererType::DX1011_SW; break;
-		case GSRendererType::OGL_SW: renderer = GSRendererType::OGL_HW; break;
-		case GSRendererType::OGL_HW: renderer = GSRendererType::OGL_SW; break;
-		default: renderer = best_sw_renderer; break;// If wasn't using one of the above mentioned ones, use best SW renderer.
-
+		switch(renderer){
+			// Use alternative renderer (SW if currently using HW renderer, and vice versa, keeping the same DX level)
+			case 1: renderer = 0; break; // DX9:  SW to HW
+			case 0: renderer = 1; break; // DX9:  HW to SW
+			case 4: renderer = 3; break; // DX11: SW to HW
+			case 3: renderer = 4; break; // DX11: HW to SW
+			case 13: renderer = 12; break; // OGL: SW to HW
+			case 12: renderer = 13; break; // OGL: HW to SW
+			default: renderer = best_sw_renderer; // If wasn't using DX (e.g. SDL), use best SW renderer.
 		}
 
 #endif
 #ifdef __linux__
 		switch(renderer) {
-			// Use alternative renderer (SW if currently using HW renderer, and vice versa)
-		case GSRendererType::OGL_SW: renderer = GSRendererType::OGL_HW; break;
-		case GSRendererType::OGL_HW: renderer = GSRendererType::OGL_SW; break;
-		default: renderer = GSRendererType::OGL_SW; break; // fallback to OGL SW
+			case 13: renderer = 12; break; // OGL: SW to HW
+			case 12: renderer = 13; break; // OGL: HW to SW
 		}
 #endif
 	}
-	stored_toggle_state = toggle_state;
 
-	int retval = _GSopen(dsp, "", renderer);
+	int retval = _GSopen(dsp, NULL, renderer);
 
 	if (s_gs != NULL)
 		s_gs->SetAspectRatio(0);	 // PCSX2 manages the aspect ratios
@@ -544,7 +469,7 @@ EXPORT_C_(int) GSopen2(void** dsp, uint32 flags)
 	return retval;
 }
 
-EXPORT_C_(int) GSopen(void** dsp, const char* title, int mt)
+EXPORT_C_(int) GSopen(void** dsp, char* title, int mt)
 {
 	/*
 	if(!XInitThreads()) return -1;
@@ -554,7 +479,7 @@ EXPORT_C_(int) GSopen(void** dsp, const char* title, int mt)
 	XCloseDisplay(display);
 	*/
 
-	GSRendererType renderer = GSRendererType::Default;
+	int renderer = 0;
 
 	// Legacy GUI expects to acquire vsync from the configuration files.
 
@@ -564,9 +489,9 @@ EXPORT_C_(int) GSopen(void** dsp, const char* title, int mt)
 	{
 		// pcsx2 sent a switch renderer request
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
-		renderer = GSUtil::CheckDirect3D11Level() >= D3D_FEATURE_LEVEL_10_0 ? GSRendererType::DX1011_SW : GSRendererType::DX9_SW;
+		renderer = GSUtil::CheckDirect3D11Level() >= D3D_FEATURE_LEVEL_10_0 ? 4 : 1; // dx11 / dx9 sw
 
 #endif
 
@@ -576,7 +501,7 @@ EXPORT_C_(int) GSopen(void** dsp, const char* title, int mt)
 	{
 		// normal init
 
-		renderer = static_cast<GSRendererType>(theApp.GetConfig("Renderer", static_cast<int>(GSRendererType::Default)));
+		renderer = theApp.GetConfig("renderer", 0);
 	}
 
 	*dsp = NULL;
@@ -640,6 +565,7 @@ EXPORT_C GSinitReadFIFO(uint8* mem)
 
 EXPORT_C GSreadFIFO(uint8* mem)
 {
+	GL_PERF("Read FIFO1");
 	try
 	{
 		s_gs->ReadFIFO(mem, 1);
@@ -663,6 +589,7 @@ EXPORT_C GSinitReadFIFO2(uint8* mem, uint32 size)
 
 EXPORT_C GSreadFIFO2(uint8* mem, uint32 size)
 {
+	GL_PERF("Read FIFO2");
 	try
 	{
 		s_gs->ReadFIFO(mem, size);
@@ -720,7 +647,7 @@ EXPORT_C GSvsync(int field)
 {
 	try
 	{
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 		if(s_gs->m_wnd->IsManaged())
 		{
@@ -807,24 +734,25 @@ EXPORT_C GSconfigure()
 	{
 		if(!GSUtil::CheckSSE()) return;
 
-#ifdef _WIN32
-		GSDialog::InitCommonControls();
-		if(GSSettingsDlg().DoModal() == IDOK)
+#ifdef _WINDOWS
+
+		if(GSSettingsDlg(s_isgsopen2).DoModal() == IDOK)
 		{
-			// Force a reload of the gs state
-			s_renderer = GSRendererType::Undefined;
+			if(s_gs != NULL && s_gs->m_wnd->IsManaged())
+			{
+				// Legacy apps like gsdxgui expect this...
+
+				GSshutdown();
+			}
 		}
 
 #else
 
 		if (RunLinuxDialog()) {
 			theApp.ReloadConfig();
-			// Force a reload of the gs state
-			s_renderer = GSRendererType::Undefined;
 		}
 
 #endif
-
 	} catch (GSDXRecoverableError)
 	{
 	}
@@ -837,7 +765,7 @@ EXPORT_C_(int) GStest()
 		return -1;
 	}
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 	s_hr = ::CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
@@ -896,7 +824,7 @@ EXPORT_C_(int) GSsetupRecording(int start, void* data)
 		return 0;
 	}
 #ifdef __linux__
-	if (!theApp.GetConfig("capture_enabled", 0)) {
+	if (theApp.GetConfig("capture_enabled", 0)) {
 		printf("GSdx: Recording is disabled\n");
 		return 0;
 	}
@@ -905,12 +833,8 @@ EXPORT_C_(int) GSsetupRecording(int start, void* data)
 	if(start & 1)
 	{
 		printf("GSdx: Recording start command\n");
-		if (s_gs->BeginCapture()) {
+		if( s_gs->BeginCapture() )
 			pt(" - Capture started\n");
-		} else {
-			pt(" - Capture cancelled\n");
-			return 0;
-		}
 	}
 	else
 	{
@@ -934,15 +858,25 @@ EXPORT_C GSgetLastTag(uint32* tag)
 
 EXPORT_C GSgetTitleInfo2(char* dest, size_t length)
 {
-	string s = "GSdx";
-	s.append(s_renderer_name).append(s_renderer_type);
+	if (gsopen_done == false) {
+		//printf("GSdx: GSgetTitleInfo but GSOpen not yet done. Ignoring\n");
+		return;
+	}
+
+	string s = "GSdx-Cutie";
 
 	// TODO: this gets called from a different thread concurrently with GSOpen (on linux)
-	if (gsopen_done && s_gs != NULL && s_gs->m_GStitleInfoBuffer[0])
-	{
-		std::lock_guard<std::mutex> lock(s_gs->m_pGSsetTitle_Crit);
+	if(s_gs == NULL) return;
 
-		s.append(" | ").append(s_gs->m_GStitleInfoBuffer);
+	if(s_gs->m_GStitleInfoBuffer[0])
+	{
+#ifdef _CX11_
+		std::lock_guard<std::mutex> lock(s_gs->m_pGSsetTitle_Crit);
+#else
+		GSAutoLock lock(&s_gs->m_pGSsetTitle_Crit);
+#endif
+
+		s = format("GSdx-Cutie| %s", s_gs->m_GStitleInfoBuffer);
 
 		if(s.size() > length - 1)
 		{
@@ -988,7 +922,7 @@ EXPORT_C GSsetFrameLimit(int limit)
 	}
 }
 
-#ifdef _WIN32
+#ifdef _WINDOWS
 
 #include <io.h>
 #include <fcntl.h>
@@ -1063,13 +997,13 @@ public:
 
 EXPORT_C GSReplay(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow)
 {
-	GSRendererType renderer = GSRendererType::Undefined;
+	int renderer = -1;
 
 	{
 		char* start = lpszCmdLine;
 		char* end = NULL;
 		long n = strtol(lpszCmdLine, &end, 10);
-		if(end > start) {renderer = static_cast<GSRendererType>(n); lpszCmdLine = end;}
+		if(end > start) {renderer = n; lpszCmdLine = end;}
 	}
 
 	while(*lpszCmdLine == ' ') lpszCmdLine++;
@@ -1529,15 +1463,11 @@ EXPORT_C GSReplay(char* lpszCmdLine, int renderer)
 {
 	GLLoader::in_replayer = true;
 
-	GSRendererType m_renderer;
-	// Allow to easyly switch between SW/HW renderer -> this effectively removes the ability to select the renderer by function args
-	m_renderer = static_cast<GSRendererType>(theApp.GetConfig("Renderer", static_cast<int>(GSRendererType::Default)));
-	// alternatively:
-	// m_renderer = static_cast<GSRendererType>(renderer);
-
-	if (m_renderer != GSRendererType::OGL_HW && m_renderer != GSRendererType::OGL_SW)
+	// Allow to easyly switch between SW/HW renderer
+	renderer = theApp.GetConfig("renderer", 12);
+	if (renderer != 12 && renderer != 13)
 	{
-		fprintf(stderr, "wrong renderer selected %d\n", static_cast<int>(m_renderer));
+		fprintf(stderr, "wrong renderer selected %d\n", renderer);
 		return;
 	}
 
@@ -1557,14 +1487,14 @@ EXPORT_C GSReplay(char* lpszCmdLine, int renderer)
 
 	void* hWnd = NULL;
 
-	int err = _GSopen((void**)&hWnd, "", m_renderer);
+	int err = _GSopen((void**)&hWnd, "", renderer);
 	if (err != 0) {
 		fprintf(stderr, "Error failed to GSopen\n");
 		return;
 	}
 	if (s_gs->m_wnd == NULL) return;
 
-	{ // Read .gs content
+	{
 		std::string f(lpszCmdLine);
 #ifdef LZMA_SUPPORTED
 		GSDumpFile* file = (f.size() >= 4) && (f.compare(f.size()-3, 3, ".xz") == 0)
@@ -1644,7 +1574,6 @@ EXPORT_C GSReplay(char* lpszCmdLine, int renderer)
 			packets.push_back(p);
 		}
 
-		delete file;
 	}
 
 	sleep(1);
@@ -1702,24 +1631,16 @@ EXPORT_C GSReplay(char* lpszCmdLine, int renderer)
 					break;
 			}
 		}
+		unsigned long end = timeGetTime();
+		fprintf(stderr, "The %ld frames of the scene was render on %ldms\n", frame_number, end - start);
+		fprintf(stderr, "A means of %fms by frame\n", (float)(end - start)/(float)frame_number);
 
-		// Ensure the rendering is complete to measure correctly the time.
-		glFinish();
+		stats.push_back((float)(end - start));
 
-		if (finished > 90) {
-			sleep(1);
-		} else {
-			unsigned long end = timeGetTime();
-			frame_number = std::max(1ul, frame_number); // avoid a potential division by 0
 
-			fprintf(stderr, "The %ld frames of the scene was render on %ldms\n", frame_number, end - start);
-			fprintf(stderr, "A means of %fms by frame\n", (float)(end - start)/(float)frame_number);
-
-			stats.push_back((float)(end - start));
-
-			finished--;
-			total_frame_nb += frame_number;
-		}
+		sleep(1);
+		finished--;
+		total_frame_nb += frame_number;
 	}
 
 	if (theApp.GetConfig("linux_replay", 1) > 1) {
@@ -1765,4 +1686,5 @@ EXPORT_C GSReplay(char* lpszCmdLine, int renderer)
 	GSshutdown();
 }
 #endif
+
 

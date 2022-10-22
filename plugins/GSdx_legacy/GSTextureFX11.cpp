@@ -54,7 +54,7 @@ bool GSDevice11::CreateTextureFX()
 
 	memset(&sd, 0, sizeof(sd));
 
-	sd.Filter = theApp.GetConfig("MaxAnisotropy", 0) && !theApp.GetConfig("paltex", 0) ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_MIN_MAG_MIP_POINT;
+	sd.Filter = !!theApp.GetConfig("AnisotropicFiltering", 0) && !theApp.GetConfig("paltex", 0) ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_MIN_MAG_MIP_POINT;
 	sd.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
 	sd.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
 	sd.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -96,7 +96,7 @@ void GSDevice11::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 		str[2] = format("%d", sel.fst);
 		str[3] = format("%d", sel.rtcopy);
 
-		D3D_SHADER_MACRO macro[] =
+		D3D11_SHADER_MACRO macro[] =
 		{
 			{"VS_BPPZ", str[0].c_str()},
 			{"VS_TME", str[1].c_str()},
@@ -118,9 +118,7 @@ void GSDevice11::SetupVS(VSSelector sel, const VSConstantBuffer* cb)
 
 		GSVertexShader11 vs;
 
-		vector<unsigned char> shader;
-		theApp.LoadResource(IDR_TFX_FX, shader);
-		CompileShader((const char *)shader.data(), shader.size(), "tfx.fx", nullptr, "vs_main", macro, &vs.vs, layout, countof(layout), &vs.il);
+		CompileShader(IDR_TFX_FX, "vs_main", macro, &vs.vs, layout, countof(layout), &vs.il);
 
 		m_vs[sel] = vs;
 
@@ -158,16 +156,14 @@ void GSDevice11::SetupGS(GSSelector sel)
 			str[0] = format("%d", sel.iip);
 			str[1] = format("%d", sel.prim);
 
-			D3D_SHADER_MACRO macro[] =
+			D3D11_SHADER_MACRO macro[] =
 			{
 				{"GS_IIP", str[0].c_str()},
 				{"GS_PRIM", str[1].c_str()},
 				{NULL, NULL},
 			};
 
-			vector<unsigned char> shader;
-			theApp.LoadResource(IDR_TFX_FX, shader);
-			CompileShader((const char *)shader.data(), shader.size(), "tfx.fx", nullptr, "gs_main", macro, &gs);
+			CompileShader(IDR_TFX_FX, "gs_main", macro, &gs);
 
 			m_gs[sel] = gs;
 		}
@@ -182,7 +178,7 @@ void GSDevice11::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSe
 
 	if(i == m_ps.end())
 	{
-		string str[20];
+		string str[18];
 
 		str[0] = format("%d", sel.fst);
 		str[1] = format("%d", sel.wms);
@@ -202,10 +198,8 @@ void GSDevice11::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSe
 		str[15] = format("%d", sel.spritehack);
 		str[16] = format("%d", sel.tcoffsethack);
 		str[17] = format("%d", sel.point_sampler);
-		str[18] = format("%d", sel.shuffle);
-		str[19] = format("%d", sel.read_ba);
 
-		D3D_SHADER_MACRO macro[] =
+		D3D11_SHADER_MACRO macro[] =
 		{
 			{"PS_FST", str[0].c_str()},
 			{"PS_WMS", str[1].c_str()},
@@ -225,16 +219,12 @@ void GSDevice11::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSe
 			{"PS_SPRITEHACK", str[15].c_str()},
 			{"PS_TCOFFSETHACK", str[16].c_str()},
 			{"PS_POINT_SAMPLER", str[17].c_str()},
-			{"PS_SHUFFLE", str[18].c_str() },
-			{"PS_READ_BA", str[19].c_str() },
 			{NULL, NULL},
 		};
 
 		CComPtr<ID3D11PixelShader> ps;
 
-		vector<unsigned char> shader;
-		theApp.LoadResource(IDR_TFX_FX, shader);
-		CompileShader((const char *)shader.data(), shader.size(), "tfx.fx", nullptr, "ps_main", macro, &ps);
+		CompileShader(IDR_TFX_FX, "ps_main", macro, &ps);
 
 		m_ps[sel] = ps;
 
@@ -269,7 +259,7 @@ void GSDevice11::SetupPS(PSSelector sel, const PSConstantBuffer* cb, PSSamplerSe
 
 			memset(&sd, 0, sizeof(sd));
 
-			af.Filter = theApp.GetConfig("MaxAnisotropy", 0) && !theApp.GetConfig("paltex", 0) ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+			af.Filter = !!theApp.GetConfig("AnisotropicFiltering", 0) && !theApp.GetConfig("paltex", 0) ? D3D11_FILTER_ANISOTROPIC : D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 			sd.Filter = ssel.ltf ? af.Filter : D3D11_FILTER_MIN_MAG_MIP_POINT;
 
 			sd.AddressU = ssel.tau ? D3D11_TEXTURE_ADDRESS_WRAP : D3D11_TEXTURE_ADDRESS_CLAMP;

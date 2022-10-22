@@ -36,7 +36,7 @@ public:
 
     void* GetModuleHandlePtr();
 
-#ifdef _WIN32
+#ifdef _WINDOWS
  	HMODULE GetModuleHandle() {return (HMODULE)GetModuleHandlePtr();}
 #endif
 
@@ -62,13 +62,11 @@ public:
 	vector<GSSetting> m_gs_interlace;
 	vector<GSSetting> m_gs_aspectratio;
 	vector<GSSetting> m_gs_upscale_multiplier;
+	vector<GSSetting> m_gs_HDmode;
 	vector<GSSetting> m_gs_max_anisotropy;
 	vector<GSSetting> m_gs_filter;
 	vector<GSSetting> m_gs_gl_ext;
 	vector<GSSetting> m_gs_hack;
-	vector<GSSetting> m_gs_crc_level;
-	vector<GSSetting> m_gs_acc_blend_level;
-	vector<GSSetting> m_gs_tv_shaders;
 
 	vector<GSSetting> m_gpu_renderers;
 	vector<GSSetting> m_gpu_filter;

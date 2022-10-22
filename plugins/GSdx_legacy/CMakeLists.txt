@@ -7,26 +7,30 @@ endif()
 
 
 # plugin name
-set(Output GSdx-legacy-1.0.0)
+set(Output GSdx-0.1.16)
 
 set(CommonFlags
     -fno-operator-names # because Xbyak uses and()/xor()/or()/not() function
+    -mfpmath=sse
     -fno-strict-aliasing
     -Wno-unknown-pragmas
     -Wno-parentheses
     -Wunused-variable # __dummy variable need to be investigated
     )
 
-# The next two need to be looked at, but spam really badly in gcc 8.
-# Largely class alignment in GSDevice.h and memcpy in GSVector*.h.
-if(GCC_VERSION VERSION_EQUAL "8.0" OR GCC_VERSION VERSION_GREATER "8.0")
-    set(CommonFlags ${CommonFlags}
-        -Wno-packed-not-aligned
-        -Wno-class-memaccess
-       )
-endif()
+set(OptimizationFlags -O2)
 
-set(GSdxFinalFlags ${CommonFlags})
+
+if(CMAKE_BUILD_TYPE STREQUAL Debug)
+    set(GSdxFinalFlags ${GSdxFinalFlags} ${CommonFlags} -D_DEBUG)
+
+elseif(CMAKE_BUILD_TYPE STREQUAL Devel)
+    set(GSdxFinalFlags ${GSdxFinalFlags} ${CommonFlags} ${OptimizationFlags} -D_DEVEL)
+
+elseif(CMAKE_BUILD_TYPE STREQUAL Release)
+    set(GSdxFinalFlags ${GSdxFinalFlags} ${CommonFlags} ${OptimizationFlags} -W)
+
+endif()
 
 if(XDG_STD)
     set(GSdxFinalFlags ${GSdxFinalFlags} -DXDG_STD)
@@ -43,6 +47,10 @@ endif()
 #Clang doesn't support a few common flags that GCC does.
 if(NOT USE_CLANG)
     set(GSdxFinalFlags ${GSdxFinalFlags} -fabi-version=6)
+    if (_M_X86_32 AND NOT USE_ASAN)
+        # Someone need to seriously test the build of GSdx without this option
+        set(GSdxFinalFlags ${GSdxFinalFlags} -mpreferred-stack-boundary=2)
+    endif()
 endif()
 
 set(GSdxSources
@@ -68,7 +76,6 @@ set(GSdxSources
     GSDeviceSW.cpp
     GSDeviceNull.cpp
     GSDirtyRect.cpp
-    GSDrawingContext.cpp
     GSDrawScanline.cpp
     GSDrawScanlineCodeGenerator.cpp
     GSDrawScanlineCodeGenerator.x86.avx.cpp
@@ -220,18 +227,14 @@ if (REBUILD_SHADER)
     add_custom_command(OUTPUT res/glsl_source.h COMMAND perl ${CMAKE_SOURCE_DIR}/linux_various/glsl2h.pl)
 endif()
 
-if(BUILTIN_GS)
-    add_pcsx2_lib(${Output} "${GSdxFinalSources}" "${GSdxFinalLibs}" "${GSdxFinalFlags}")
-else()
-    add_pcsx2_plugin(${Output} "${GSdxFinalSources}" "${GSdxFinalLibs}" "${GSdxFinalFlags}")
-endif()
+add_pcsx2_plugin(${Output} "${GSdxFinalSources}" "${GSdxFinalLibs}" "${GSdxFinalFlags}")
 
 ################################### Replay Loader
-if(BUILD_REPLAY_LOADERS AND NOT GSdx)
+if(BUILD_REPLAY_LOADERS)
     set(Replay pcsx2_GSReplayLoader)
     set(GSdxReplayLoaderFinalSources
         ${GSdxFinalSources}
         linux_replay.cpp
     )
     add_pcsx2_executable(${Replay} "${GSdxReplayLoaderFinalSources}" "${GSdxFinalLibs}" "${GSdxFinalFlags}")
-endif()
+endif(BUILD_REPLAY_LOADERS)

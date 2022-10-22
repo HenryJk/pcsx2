@@ -30,6 +30,7 @@ class GSRenderer : public GSState
 {
 	GSCapture m_capture;
 	string m_snapshot;
+	bool m_snapdump;
 	int m_shader;
 
 	bool Merge(int field);
@@ -42,13 +43,18 @@ protected:
 	int m_interlace;
 	int m_aspectratio;
 	int m_filter;
+	int m_skiptex;
+	int m_SkipIso_PSM;
 	bool m_vsync;
 	bool m_aa1;
+	bool m_mipmap;
 	bool m_framelimit;
 	bool m_shaderfx;
+	bool m_customshader;
 	bool m_fxaa;
 	bool m_shadeboost;
-	bool m_texture_shuffle;
+	bool UserHacks_Skiptexhotkey;
+	bool UserHacks_PSMhotkey;
 
 	virtual GSTexture* GetOutput(int i) = 0;
 
@@ -68,9 +74,6 @@ public:
 	virtual void KeyEvent(GSKeyEventData* e);
 	virtual bool CanUpscale() {return false;}
 	virtual int GetUpscaleMultiplier() {return 1;}
-	virtual GSVector2i GetInternalResolution() {
-		return GSVector2i(GetDisplayRect().width(), GetDisplayRect().height());
-	}
 	void SetAspectRatio(int aspect) {m_aspectratio = aspect;}
 	void SetVSync(bool enabled);
 	void SetFrameLimit(bool limit);
@@ -80,7 +83,11 @@ public:
 	virtual void EndCapture();
 
 public:
+#ifdef _CX11_
 	std::mutex m_pGSsetTitle_Crit;
+#else
+	GSCritSec m_pGSsetTitle_Crit;
+#endif
 
 	char m_GStitleInfoBuffer[128];
 };
