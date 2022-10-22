@@ -777,16 +777,8 @@ __inline void GSState::CheckFlushes()
 	if (m_dirty_gs_regs && m_index.tail > 0)
 	{
 		if (TestDrawChanged())
-		{
 			Flush(GSFlushReason::CONTEXTCHANGE);
-		}
 	}
-	if ((m_context->FRAME.FBMSK & GSLocalMemory::m_psm[m_context->FRAME.PSM].fmsk) != GSLocalMemory::m_psm[m_context->FRAME.PSM].fmsk)
-		m_mem.m_clut.Invalidate(m_context->FRAME.Block());
-
-	// Hey, why not check? I mean devs have done crazier things..
-	if(!m_context->ZBUF.ZMSK)
-		m_mem.m_clut.Invalidate(m_context->ZBUF.Block());
 }
 
 void GSState::GIFPackedRegHandlerNull(const GIFPackedReg* RESTRICT r)
@@ -1076,8 +1068,6 @@ void GSState::ApplyTEX0(GIFRegTEX0& TEX0)
 	// even if TEX0 did not change, a new palette may have been uploaded and will overwrite the currently queued for drawing
 	const bool wt = m_mem.m_clut.WriteTest(TEX0, m_env.TEXCLUT);
 
-	// clut loading already covered with WriteTest, for drawing only have to check CPSM and CSA (MGS3 intro skybox would be drawn piece by piece without this)
-
 	if (wt)
 		Flush(GSFlushReason::CLUTCHANGE);
 
@@ -1148,8 +1138,6 @@ void GSState::GIFRegHandlerTEX0(const GIFReg* RESTRICT r)
 	GL_REG("TEX0_%d = 0x%x_%x", i, r->U32[1], r->U32[0]);
 
 	GIFRegTEX0 TEX0 = r->TEX0;
-	GIFRegMIPTBP1 temp_MIPTBP1;
-	bool MTBAReloaded = false;
 	// Max allowed MTBA size for 32bit swizzled textures (including 8H 4HL etc) is 512, 16bit and normal 8/4bit formats can be 1024
 	const u32 maxTex = (GSLocalMemory::m_psm[TEX0.PSM].bpp < 32) ? 10 : 9;
 
@@ -1174,6 +1162,7 @@ void GSState::GIFRegHandlerTEX0(const GIFReg* RESTRICT r)
 	// Format must be a color, Z formats do not trigger MTBA (but are valid for Mipmapping)
 	if (m_env.CTXT[i].TEX1.MTBA && TEX0.TW >= 5 && TEX0.TW <= maxTex && (TEX0.PSM & 0x30) != 0x30)
 	{
+		GIFRegMIPTBP1& mip_tbp1 = m_env.CTXT[i].MIPTBP1;
 		// NOTE 1: TEX1.MXL must not be automatically set to 3 here and it has no effect on MTBA.
 		// NOTE 2: Mipmap levels are packed with a minimum distance between them of 1 block, even down at 4bit textures under 16x16.
 		// NOTE 3: Everything is derrived from the width of the texture, TBW and TH are completely ignored (useful for handling non-rectangular ones)
@@ -1190,39 +1179,32 @@ void GSState::GIFRegHandlerTEX0(const GIFReg* RESTRICT r)
 		bw = std::max<u32>(bw >> 1, 1);
 		tex_size = std::max<u32>(tex_size >> 2, 1);
 
-		temp_MIPTBP1.TBP1 = bp;
-		temp_MIPTBP1.TBW1 = bw;
+		mip_tbp1.TBP1 = bp;
+		mip_tbp1.TBW1 = bw;
 
 		bp += tex_size;
 		bw = std::max<u32>(bw >> 1, 1);
 		tex_size = std::max<u32>(tex_size >> 2, 1);
 
-		temp_MIPTBP1.TBP2 = bp;
-		temp_MIPTBP1.TBW2 = bw;
+		mip_tbp1.TBP2 = bp;
+		mip_tbp1.TBW2 = bw;
 
 		bp += tex_size;
 		bw = std::max<u32>(bw >> 1, 1);
 
-		temp_MIPTBP1.TBP3 = bp;
-		temp_MIPTBP1.TBW3 = bw;
-
-		MTBAReloaded = true;
-	}
-
-	ApplyTEX0<i>(TEX0);
-
-	if (MTBAReloaded)
-	{
-		m_env.CTXT[i].MIPTBP1 = temp_MIPTBP1;
+		mip_tbp1.TBP3 = bp;
+		mip_tbp1.TBW3 = bw;
 
 		if (i == m_prev_env.PRIM.CTXT)
 		{
-			if (m_prev_env.CTXT[i].MIPTBP1.U64 ^ m_env.CTXT[i].MIPTBP1.U64)
+			if (m_prev_env.CTXT[i].MIPTBP1.U64 ^ mip_tbp1.U64)
 				m_dirty_gs_regs |= (1 << DIRTY_REG_MIPTBP1);
 			else
 				m_dirty_gs_regs &= ~(1 << DIRTY_REG_MIPTBP1);
 		}
 	}
+
+	ApplyTEX0<i>(TEX0);
 }
 
 template <int i>
@@ -2957,17 +2939,47 @@ GSState::PRIM_OVERLAP GSState::PrimitiveOverlap()
 
 __forceinline bool GSState::IsAutoFlushDraw()
 {
+	if (!PRIM->TME)
+		return false;
+
 	const u32 frame_mask = GSLocalMemory::m_psm[m_context->TEX0.PSM].fmsk;
-	const bool frame_hit = (m_context->FRAME.Block() == m_context->TEX0.TBP0) && !(m_context->TEST.ATE && m_context->TEST.ATST == 0 && m_context->TEST.AFAIL == 2) && ((m_context->FRAME.FBMSK & frame_mask) != frame_mask);
+	const bool frame_hit = ((m_context->FRAME.Block() == m_context->TEX0.TBP0) || (m_context->FRAME.Block() == m_context->TEX0.CBP)) && !(m_context->TEST.ATE && m_context->TEST.ATST == 0 && m_context->TEST.AFAIL == 2) && ((m_context->FRAME.FBMSK & frame_mask) != frame_mask);
 	// There's a strange behaviour we need to test on a PS2 here, if the FRAME is a Z format, like Powerdrome something swaps over, and it seems Alpha Fail of "FB Only" writes to the Z.. it's odd.
 	const bool zbuf_hit = (m_context->ZBUF.Block() == m_context->TEX0.TBP0) && !(m_context->TEST.ATE && m_context->TEST.ATST == 0 && m_context->TEST.AFAIL != 2) && !m_context->ZBUF.ZMSK;
 	const u32 frame_z_psm = frame_hit ? m_context->FRAME.PSM : m_context->ZBUF.PSM;
 	const u32 frame_z_bp = frame_hit ? m_context->FRAME.Block() : m_context->ZBUF.Block();
 
-	if (PRIM->TME && (frame_hit || zbuf_hit) && GSUtil::HasSharedBits(frame_z_bp, frame_z_psm, m_context->TEX0.TBP0, m_context->TEX0.PSM))
+	if ((frame_hit || zbuf_hit) && GSUtil::HasSharedBits(frame_z_bp, frame_z_psm, m_context->TEX0.TBP0, m_context->TEX0.PSM))
 		return true;
 	
 	return false;
+}
+
+__forceinline void GSState::CLUTAutoFlush()
+{
+	if (m_mem.m_clut.IsInvalid())
+		return;
+
+	const GSVector2i offset = GSVector2i(m_context->XYOFFSET.OFX, m_context->XYOFFSET.OFY);
+	GSVector4i tex_coord;
+	tex_coord.x = (static_cast<int>(m_v.XYZ.X) - offset.x) >> 4;
+	tex_coord.y = (static_cast<int>(m_v.XYZ.Y) - offset.y) >> 4;
+
+	// Quick checks first they (might) be enough as most CLUT draws will be from 0,0
+	if ((m_context->FRAME.FBMSK & GSLocalMemory::m_psm[m_context->FRAME.PSM].fmsk) != GSLocalMemory::m_psm[m_context->FRAME.PSM].fmsk)
+	{
+		const int end_bp = GSLocalMemory::GetEndBlock(m_context->FRAME.Block(), m_context->FRAME.FBW, tex_coord.x, tex_coord.y, m_context->FRAME.PSM);
+		if (m_mem.m_clut.InvalidateRange(m_context->FRAME.Block(), end_bp))
+			return;
+	}
+
+	// Hey, why not check? I mean devs have done crazier things..
+	if (!m_context->ZBUF.ZMSK)
+	{
+		const int end_bp = GSLocalMemory::GetEndBlock(m_context->FRAME.Block(), m_context->FRAME.FBW, tex_coord.x, tex_coord.y, m_context->ZBUF.PSM);
+		if (m_mem.m_clut.InvalidateRange(m_context->ZBUF.Block(), end_bp))
+			return;
+	}
 }
 
 __forceinline void GSState::HandleAutoFlush()
@@ -3190,7 +3202,9 @@ __forceinline void GSState::VertexKick(u32 skip)
 
 	ASSERT(m_vertex.tail < m_vertex.maxcount + 3);
 
-	if (auto_flush && m_index.tail > 0 && ((m_vertex.tail + 1) - m_vertex.head) >= n)
+	CLUTAutoFlush();
+
+	if (auto_flush && skip == 0 && m_index.tail > 0 && ((m_vertex.tail + 1) - m_vertex.head) >= n)
 	{
 		HandleAutoFlush();
 	}

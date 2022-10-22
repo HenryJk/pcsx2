@@ -100,9 +100,9 @@ public:
 	GSClut(GSLocalMemory* mem);
 	virtual ~GSClut();
 
-	void Invalidate();
-	void Invalidate(u32 block);
-	void InvalidateRange(u32 start_block, u32 end_block);
+	bool InvalidateRange(u32 start_block, u32 end_block);
+	bool IsInvalid();
+	u32 GetCLUTCBP();
 	bool WriteTest(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
 	void Write(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT);
 	//void Read(const GIFRegTEX0& TEX0);

@@ -103,12 +103,17 @@ GSClut::~GSClut()
 	vmfree(m_clut, CLUT_ALLOC_SIZE);
 }
 
-void GSClut::Invalidate()
+bool GSClut::IsInvalid()
 {
-	m_write.dirty = true;
+	return m_write.dirty;
 }
 
-void GSClut::InvalidateRange(u32 start_block, u32 end_block)
+u32  GSClut::GetCLUTCBP()
+{
+	return m_write.TEX0.CBP;
+}
+
+bool GSClut::InvalidateRange(u32 start_block, u32 end_block)
 {
 	int blocks = 4;
 
@@ -122,15 +127,8 @@ void GSClut::InvalidateRange(u32 start_block, u32 end_block)
 	{
 		m_write.dirty = true;
 	}
-}
-
-// Check the whole page, if the CLUT is slightly offset from a page boundary it could miss it.
-void GSClut::Invalidate(u32 block)
-{
-	if (!((block ^ m_write.TEX0.CBP) & ~0x1F))
-	{
-		m_write.dirty = true;
-	}
+#
+	return m_write.dirty;
 }
 
 bool GSClut::WriteTest(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TEXCLUT)
@@ -775,7 +773,7 @@ bool GSClut::WriteState::IsDirty(const GIFRegTEX0& TEX0, const GIFRegTEXCLUT& TE
 
 	bool is_dirty = dirty;
 
-	if (((this->TEX0.U64 ^ TEX0.U64) & mask) || (GSLocalMemory::m_psm[this->TEX0.PSM].bpp != GSLocalMemory::m_psm[TEX0.PSM].bpp))
+	if (((this->TEX0.U64 ^ TEX0.U64) & mask) || (GSLocalMemory::m_psm[this->TEX0.PSM].pal != GSLocalMemory::m_psm[TEX0.PSM].pal))
 		is_dirty |= true;
 	else if (TEX0.CSM == 1 && (TEXCLUT.U32[0] ^ this->TEXCLUT.U32[0]))
 		is_dirty |= true;
@@ -795,7 +793,7 @@ bool GSClut::ReadState::IsDirty(const GIFRegTEX0& TEX0)
 
 	bool is_dirty = dirty;
 
-	if (((this->TEX0.U64 ^ TEX0.U64) & mask) || (GSLocalMemory::m_psm[this->TEX0.PSM].bpp != GSLocalMemory::m_psm[TEX0.PSM].bpp))
+	if (((this->TEX0.U64 ^ TEX0.U64) & mask) || (GSLocalMemory::m_psm[this->TEX0.PSM].pal != GSLocalMemory::m_psm[TEX0.PSM].pal))
 		is_dirty |= true;
 
 	if (!is_dirty)
@@ -814,7 +812,7 @@ bool GSClut::ReadState::IsDirty(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA)
 
 	bool is_dirty = dirty;
 
-	if (((this->TEX0.U64 ^ TEX0.U64) & tex0_mask) || (GSLocalMemory::m_psm[this->TEX0.PSM].bpp != GSLocalMemory::m_psm[TEX0.PSM].bpp))
+	if (((this->TEX0.U64 ^ TEX0.U64) & tex0_mask) || (GSLocalMemory::m_psm[this->TEX0.PSM].pal != GSLocalMemory::m_psm[TEX0.PSM].pal))
 		is_dirty |= true;
 	else // Just to optimise the checks.
 	{
